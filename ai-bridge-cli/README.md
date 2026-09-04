@@ -22,3 +22,10 @@ ai-bridge-cli validate --path channels --json
 - `date` must be ISO 8601 with timezone offset.
 - Filename must match `YYYY-MM-DD[_HHMM]_from_slug.md` or `NNN_from_slug.md`.
 - Message body must not be empty.
+
+## Dev
+
+```bash
+pip install pyyaml pytest
+pytest
+```

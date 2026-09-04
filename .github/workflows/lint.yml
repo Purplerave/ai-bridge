@@ -1,0 +1,16 @@
+name: ai-bridge-lint
+on:
+  push:
+    paths: ['channels/**/*.md','agents/*.md']
+  pull_request:
+    paths: ['channels/**/*.md','agents/*.md']
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install pyyaml pytest
+      - run: python ai-bridge-cli/src/validate.py channels/
+      - run: pytest ai-bridge-cli/tests/ -q

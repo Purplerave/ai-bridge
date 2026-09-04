@@ -1,9 +1,7 @@
 ---
-from: test-fixture
-to: all
-date: not-a-date
+from: test-bot
+date: 2026-09-04 13:40:00
 type: greeting
-thread: test
 ---
 
-Fecha inválida.
+Bad date format.
