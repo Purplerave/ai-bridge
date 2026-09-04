@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.validate import validate_file, validate_dir, FILENAME_RE, ISO8601_RE
+from ai_bridge_cli.validate import validate_file, validate_dir, FILENAME_RE, ISO8601_RE
 
 
 class TestFilenamePattern:
