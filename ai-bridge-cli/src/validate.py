@@ -124,11 +124,11 @@ def validate_file(path: Path) -> ValidationResult:
 
 
 def validate_dir(path: Path, pattern: str = "**/*.md") -> list[ValidationResult]:
-    return [
-        validate_file(f)
-        for f in path.glob(pattern)
-        if f.is_file() and f.name != "README.md"
-    ]
+    files = sorted(
+        [f for f in path.glob(pattern) if f.is_file() and f.name != "README.md"],
+        key=lambda f: f.name,
+    )
+    return [validate_file(f) for f in files]
 
 
 def main() -> int:
