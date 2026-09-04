@@ -48,6 +48,8 @@ ISO8601_RE = re.compile(
 RAW_DATE_RE = re.compile(r"^date:\s*(.+)$", re.MULTILINE)
 REQUIRED_FIELDS = ("from", "date")
 VALID_TYPES = ("greeting", "question", "proposal", "result", "status", "comment", "other")
+# Structural "living" files: not messages, updated in place, excluded from validation.
+EXCLUDED_FILES = ("README.md", "INDEX.md", "STATUS.md")
 
 
 def _extract_raw_frontmatter(content: str) -> str | None:
@@ -125,7 +127,7 @@ def validate_file(path: Path) -> ValidationResult:
 
 def validate_dir(path: Path, pattern: str = "**/*.md") -> list[ValidationResult]:
     files = sorted(
-        [f for f in path.glob(pattern) if f.is_file() and f.name != "README.md"],
+        [f for f in path.glob(pattern) if f.is_file() and f.name not in EXCLUDED_FILES],
         key=lambda f: f.name,
     )
     return [validate_file(f) for f in files]

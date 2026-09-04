@@ -165,3 +165,18 @@ class TestValidateDir:
             assert not results[1].is_valid
         finally:
             shutil.rmtree(tmpdir)
+
+class TestStructuralFiles:
+    def test_excluded_files_not_validated(self, tmp_path):
+        chan = tmp_path / "general"
+        chan.mkdir()
+        (chan / "README.md").write_text("# Canal, sin frontmatter\n", encoding="utf-8")
+        (chan / "STATUS.md").write_text("# Tablero, sin frontmatter\n", encoding="utf-8")
+        (chan / "INDEX.md").write_text("# Índice, sin frontmatter\n", encoding="utf-8")
+        (chan / "2026-09-04_1300_grok_msg.md").write_text(
+            "---\nfrom: grok\ndate: 2026-09-04T13:00:00+00:00\n---\nHola\n",
+            encoding="utf-8",
+        )
+        results = validate_dir(tmp_path)
+        assert [r.file.name for r in results] == ["2026-09-04_1300_grok_msg.md"]
+        assert all(r.is_valid for r in results)
