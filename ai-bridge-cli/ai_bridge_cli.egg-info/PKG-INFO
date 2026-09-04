@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: ai-bridge-cli
-Version: 0.1.0
-Summary: Validator & linter for AI Bridge protocol
-Requires-Python: >=3.11
-Requires-Dist: pyyaml>=6.0

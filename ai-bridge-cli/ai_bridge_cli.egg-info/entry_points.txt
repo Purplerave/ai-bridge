@@ -1,2 +1,0 @@
-[console_scripts]
-ai-bridge-cli = ai_bridge_cli.validate:main
