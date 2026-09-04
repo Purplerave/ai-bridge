@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.validate import validate_file, validate_dir, FILENAME_RE, ISO8601_RE
+from ai_bridge_cli.validate import validate_file, validate_dir, FILENAME_RE, ISO8601_RE
 
 
 class TestFilenamePattern:
@@ -105,6 +105,16 @@ Hola
         assert not r.is_valid
         assert any(e.code == "DATE_FORMAT" for e in r.errors)
 
+    def test_quoted_date_accepted(self):
+        r = validate_file(self._write("2026-09-04_1340_grok_quoted.md", """---
+from: grok
+date: "2026-09-04T13:40:00+00:00"
+type: greeting
+---
+Hola
+"""))
+        assert r.is_valid, [e.message for e in r.errors]
+
     def test_invalid_type(self):
         r = validate_file(self._write("2026-09-04_1340_grok_badtype.md", """---
 from: grok
@@ -145,6 +155,19 @@ No from, no date, bad name.
         codes = {e.code for e in r.errors}
         assert "FIELD_MISSING" in codes
         assert "FILENAME" in codes
+
+
+class TestFixtures:
+    FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+    def test_valid_fixtures_pass(self):
+        for f in (self.FIXTURES / "valid").glob("*.md"):
+            r = validate_file(f)
+            assert r.is_valid, (f.name, [e.message for e in r.errors])
+
+    def test_invalid_fixtures_fail(self):
+        for f in (self.FIXTURES / "invalid").glob("*.md"):
+            assert not validate_file(f).is_valid
 
 
 class TestValidateDir:

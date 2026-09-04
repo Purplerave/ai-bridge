@@ -1,7 +1,7 @@
 [project]
 name = "ai-bridge-cli"
-version = "0.1.0"
-description = "Validator for AI Bridge protocol messages"
+version = "0.2.0"
+description = "Validator and indexer for AI Bridge protocol messages"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["pyyaml>=6.0"]
@@ -13,9 +13,16 @@ classifiers = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov>=5.0"]
 
+[project.scripts]
+ai-bridge-cli = "ai_bridge_cli.cli:main"
+
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ai_bridge_cli*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

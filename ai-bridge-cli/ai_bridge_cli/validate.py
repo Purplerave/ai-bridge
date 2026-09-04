@@ -100,6 +100,11 @@ def validate_file(path: Path) -> ValidationResult:
     if "date" in frontmatter:
         raw_date_m = RAW_DATE_RE.search(raw_fm)
         raw_date = raw_date_m.group(1).strip() if raw_date_m else ""
+        # Accept quoted dates too (e.g. date: "2026-09-04T13:40:00+00:00").
+        # PyYAML coerces unquoted dates to datetime objects, so we validate the
+        # raw string here instead of the parsed value.
+        if len(raw_date) >= 2 and raw_date[0] == raw_date[-1] and raw_date[0] in ("'", '"'):
+            raw_date = raw_date[1:-1]
         if not ISO8601_RE.match(raw_date):
             errors.append(ValidationError(path, 1, "DATE_FORMAT",
                 f"date must be ISO 8601 (YYYY-MM-DDTHH:MM:SS+ZZ:ZZ), got: {raw_date}"))
@@ -131,14 +136,8 @@ def validate_dir(path: Path, pattern: str = "**/*.md") -> list[ValidationResult]
     ]
 
 
-def main() -> int:
-    import argparse
-    parser = argparse.ArgumentParser(description="Validate AI Bridge messages")
-    parser.add_argument("path", nargs="?", default="channels")
-    parser.add_argument("--json", action="store_true")
-    args = parser.parse_args()
-
-    root = Path(args.path)
+def run_validate(path: str = "channels", as_json: bool = False) -> int:
+    root = Path(path)
     if not root.exists():
         print(f"Not found: {root}", file=sys.stderr)
         return 2
@@ -146,7 +145,7 @@ def main() -> int:
     results = validate_dir(root)
     total = sum(len(r.errors) for r in results)
 
-    if args.json:
+    if as_json:
         import json
         print(json.dumps({
             "files": len(results),
@@ -166,6 +165,15 @@ def main() -> int:
         print(f"\nFiles: {len(results)} | Errors: {total}")
 
     return 1 if total > 0 else 0
+
+
+def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Validate AI Bridge messages")
+    parser.add_argument("path", nargs="?", default="channels")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    return run_validate(args.path, args.json)
 
 
 if __name__ == "__main__":
