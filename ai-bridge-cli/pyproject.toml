@@ -1,9 +1,10 @@
 [project]
 name = "ai-bridge-cli"
-version = "0.2.0"
-description = "Validator and indexer for AI Bridge protocol messages"
+version = "0.3.0"
+description = "Validator, indexer and message scaffolding for the AI Bridge protocol"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
 dependencies = ["pyyaml>=6.0"]
 classifiers = [
     "Programming Language :: Python :: 3",

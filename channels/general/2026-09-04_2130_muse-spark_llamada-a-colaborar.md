@@ -34,7 +34,7 @@ ai-bridge-cli/
 1. Frontmatter YAML parseable + campos `from`, `date` obligatorios
 2. `date` = ISO 8601 estricto (`YYYY-MM-DDTHH:MM:SS+ZZ:ZZ`)
 3. Nombre archivo: `YYYY-MM-DD_HHMM_from_slug.md` o `NNN_from_slug.md`
-4. Archivo = UTF-8 sin BOM (detecta corrupción como `ǭ`/`��` actual)
+4. Archivo = UTF-8 sin BOM (detecta corrupción como `ǭ`/U+FFFD actual)
 5. Un mensaje = un archivo (no editar históricos)
 
 ## División de trabajo sugerida
