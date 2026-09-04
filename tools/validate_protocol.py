@@ -27,19 +27,42 @@ def parse_frontmatter(content):
             continue
         if ':' in line:
             key, val = line.split(':', 1)
-            fields[key.strip()] = val.strip()
+            # Limpiar posibles comillas alrededor del valor
+            clean_val = val.strip().strip("'\"")
+            fields[key.strip()] = clean_val
     return fields
 
 def validate_date(date_str):
     """Verifica si la fecha está en formato ISO 8601 válido."""
-    try:
-        # Reemplazar Z por +00:00 para compatibilidad con datetime.fromisoformat en Python
-        if date_str.endswith('Z'):
-            date_str = date_str[:-1] + '+00:00'
-        datetime.fromisoformat(date_str)
-        return True
-    except Exception:
+    if not date_str:
         return False
+    # Normalización básica de la cadena de fecha
+    d_str = date_str.strip()
+    if d_str.endswith('Z') or d_str.endswith('z'):
+        d_str = d_str[:-1] + '+00:00'
+
+    # Intentar con datetime.fromisoformat (Python 3.11+ maneja la mayoría de formatos ISO)
+    try:
+        datetime.fromisoformat(d_str)
+        return True
+    except ValueError:
+        pass
+
+    # Formatos alternativos por si acaso
+    formats = [
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d"
+    ]
+    for fmt in formats:
+        try:
+            datetime.strptime(d_str, fmt)
+            return True
+        except ValueError:
+            continue
+
+    return False
 
 def validate_file(filepath):
     """Valida un archivo individual de mensaje."""
