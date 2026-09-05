@@ -66,6 +66,10 @@ def build_message(
         raise ValueError(f"type must be one of {sorted(VALID_TYPES)}, got {msg_type!r}")
     if not re.fullmatch(r"[a-z0-9-]+", sender):
         raise ValueError(f"from must be kebab-case agent id, got {sender!r}")
+    # EICP 0.1.1 §4: `to` is a single string; several recipients go in `mentions`.
+    # Silently rewriting a list to "all" would drop the addressing information.
+    if not isinstance(to, str) or not to.strip():
+        raise ValueError(f"to must be a non-empty string (use `mentions` for several agents), got {to!r}")
 
     msg: dict[str, Any] = {
         "eicp": EICP_VERSION,
@@ -99,7 +103,7 @@ def to_frontmatter(msg: dict[str, Any]) -> dict[str, Any]:
         "eicp_id": msg["id"],
     }
     if "to" in msg:
-        fm["to"] = msg["to"] if isinstance(msg["to"], str) else "all"
+        fm["to"] = msg["to"]
     for key in ("thread", "in_reply_to", "ack", "mentions"):
         if key in msg and msg[key] is not None:
             fm[key] = msg[key]
@@ -149,12 +153,24 @@ def parse_markdown(text: str, relative_path: str | None = None) -> dict[str, Any
     if not msg_id:
         raise ValueError("eicp_id missing and no path for fallback")
 
+    sender = fm.get("from")
+    if not sender:
+        raise ValueError("frontmatter is missing `from`")
+    date_raw = fm.get("date")
+    if date_raw is None:
+        raise ValueError("frontmatter is missing `date`")
+    if isinstance(date_raw, datetime):
+        # An unquoted YAML timestamp loads as a `datetime`; `str()` would render
+        # it with a space separator ("2026-09-05 12:00:00+00:00"), which is not
+        # ISO 8601 and breaks the canonical order of EICP 0.1.1 §3.
+        date_raw = date_raw.isoformat()
+
     body = JSON_FENCE_RE.sub("", rest).strip()
     out: dict[str, Any] = {
-        "eicp": str(fm.get("eicp", EICP_VERSION)),
+        "eicp": str(fm.get("eicp") or EICP_VERSION),
         "id": str(msg_id),
-        "from": fm["from"],
-        "date": str(fm["date"]),
+        "from": str(sender),
+        "date": str(date_raw),
         "type": fm.get("type", "other"),
         "body": body,
     }
@@ -177,6 +193,15 @@ def write_state_slot(slot: str, value: Any, root: Path = Path("state")) -> Path:
     return path
 
 
+def read_state_slot(slot: str, root: Path = Path("state")) -> Any:
+    """Stored value of a slot, or None when the file does not exist / is not a slot."""
+    path = slot_path(slot, root)
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data.get("value") if isinstance(data, dict) else None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="EICP 0.1.1 helper")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -195,6 +220,7 @@ def main(argv: list[str] | None = None) -> int:
     p_embed.add_argument("--body", required=True)
     p_embed.add_argument("--to", default="all")
     p_embed.add_argument("--thread", default=None)
+    p_embed.add_argument("--in-reply-to", default=None)
     p_embed.add_argument("--out", required=True)
 
     p_parse = sub.add_parser("parse", help="parse markdown file to JSON")
@@ -202,31 +228,46 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    if args.cmd == "emit":
-        msg = build_message(
+    # Exit codes follow the bridge CLI: 0 ok · 1 bad content · 2 usage / path.
+    def build() -> dict[str, Any]:
+        return build_message(
             sender=args.sender, msg_type=args.msg_type, body=args.body,
-            to=args.to, thread=args.thread, in_reply_to=args.in_reply_to,
+            to=args.to, thread=args.thread, in_reply_to=getattr(args, "in_reply_to", None),
         )
-        print(json.dumps(msg, ensure_ascii=False, indent=2))
-        return 0
 
-    if args.cmd == "embed":
-        msg = build_message(
-            sender=args.sender, msg_type=args.msg_type, body=args.body,
-            to=args.to, thread=args.thread,
-        )
-        text = embed_markdown(msg)
-        out = Path(args.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text, encoding="utf-8")
-        print(out)
-        return 0
+    try:
+        if args.cmd == "emit":
+            print(json.dumps(build(), ensure_ascii=False, indent=2))
+            return 0
 
-    if args.cmd == "parse":
-        path = Path(args.path)
-        data = parse_markdown(path.read_text(encoding="utf-8"), relative_path=str(path))
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        return 0
+        if args.cmd == "embed":
+            out = Path(args.out)
+            try:
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(embed_markdown(build()), encoding="utf-8")
+            except OSError as e:
+                print(f"error: cannot write {out}: {e}", file=sys.stderr)
+                return 2
+            print(out)
+            return 0
+
+        if args.cmd == "parse":
+            path = Path(args.path)
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                print(f"error: cannot read {path}: {e}", file=sys.stderr)
+                return 2
+            try:
+                data = parse_markdown(text, relative_path=str(path))
+            except ValueError as e:  # includes json.JSONDecodeError
+                print(f"error: {path}: {e}", file=sys.stderr)
+                return 1
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+            return 0
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     return 2
 
