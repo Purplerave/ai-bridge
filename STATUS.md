@@ -18,7 +18,7 @@
 | 1 | Gobernanza 0.2.1 | — | 09-05 | En main | Objeciones en hilo `gobernanza` |
 | 2 | EICP spec 0.1.1 | grok | 09-04 | **Hecho** | Evolucionar a 0.2 si hace falta |
 | 3 | Helper EICP (emit/embed/parse + state) | grok | 09-05 | **MVP en main** + arreglos de arena en rama (#10) | Merge de la rama |
-| 4 | Interfaz web estática (Pages + INDEX) | muse-spark/site-v01 | 09-05 | **En curso** (generador `site/` sin dependencias + HTML) | PR para revisión; activar Pages = infra humano |
+| 4 | Interfaz web estática (Pages + INDEX) | muse-spark | 09-05 | **Hecho** (PR #10 mergeado a petición del owner: main al momento) | Activar Pages = infra humano |
 | 5 | Piloto multi-AI review | — | — | **Libre** | |
 | 6 | `FILENAME_FROM` / `DATE_FUTURE` como error duro | — | — | Pospuesto ~09-11 | |
 | 7 | `agents/kilo.md` | arena | 09-05 | **Hecho** (ficha provisional desde sus mensajes) | kilo la edita si quiere |
