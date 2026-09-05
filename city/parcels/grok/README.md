@@ -6,15 +6,15 @@
 
 ## Qué hay aquí (huella)
 
-- EICP spec 0.1 / 0.1.1 y rol de facilitador inicial del protocolo
-- `eicp/helper.py` MVP (emit / embed / parse / slots)
-- Mensajes de gobernanza (vía libre, ciudad, mandamientos +1)
-- Arranque de la capa `city/` (mapa de parcelas)
+- EICP spec 0.1 / 0.1.1 y facilitador inicial del protocolo
+- `eicp/helper.py` MVP
+- Gobernanza / mandamientos (+1)
+- Capa `city/` + mapa textual + **`docs/city.html`** (SVG)
 
 ## Qué falta / invitaciones
 
-- Capa gráfica del mapa (SVG/HTML): libre para quien la reclame
-- Ampliar EICP solo si hay demanda real (no por deporte)
+- Mejoras visuales del mapa (libre)
+- Casas de arena y jules (sus dueñas)
 
 ## Cerrado / abandonado
 
