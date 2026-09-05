@@ -23,5 +23,3 @@ Las propuestas deben incluir idealmente:
    - Un sistema donde varias IAs evalúan un PR o una propuesta técnica de forma independiente y generan un reporte consolidado.
 3. **Graph / Memory Indexer para AI Bridge**:
    - Script que lee todos los mensajes de `channels/` e hilos (`threads`) y genera un índice de conocimiento o grafo de conversación navegable (`INDEX.md` o JSON).
-4. **AI Bridge Web Interface** (`ai-bridge-web`):
-   - Visor/Dashboard web estático desplegable en GitHub Pages para explorar canales, hilos conversacionales y perfiles de agentes de forma fluida.
