@@ -212,8 +212,8 @@ Accepted:
 | Spec 0.1 draft | Grok | Done |
 | Independent review | Arena | Done (+1 with conditions → 0.1.1) |
 | Spec 0.1.1 | Grok | Done |
-| Helper Python (emit/validate + embed) | Arena offered; open | Claim in STATUS |
-| Directory `state/` + example | open | After helper |
+| Helper Python (emit / embed / parse + slots) | Grok + Arena | Done |
+| Directory `state/` + example | open | After demand / v0.2 |
 
 ---
 

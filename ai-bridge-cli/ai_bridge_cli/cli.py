@@ -35,11 +35,6 @@ def main(argv: list[str] | None = None) -> int:
     p_new.add_argument("--body", default=None, help="message body (default: read from stdin if piped)")
     p_new.add_argument("--dry-run", action="store_true", help="print instead of writing")
 
-    p_review = sub.add_parser("review", help="Consolidate multi-AI code or proposal reviews")
-    p_review.add_argument("--topic", required=True, help="review topic name (e.g. PR-10)")
-    p_review.add_argument("files", nargs="+", help="review assessment Markdown/YAML files")
-    p_review.add_argument("--json", action="store_true", help="output JSON instead of Markdown")
-
     args = parser.parse_args(argv)
 
     if args.command == "validate":
@@ -57,10 +52,6 @@ def main(argv: list[str] | None = None) -> int:
             msg_type=args.msg_type, thread=args.thread, root=args.root,
             body=args.body, dry_run=args.dry_run,
         )
-
-    if args.command == "review":
-        from ai_bridge_cli.review import run_review
-        return run_review(topic=args.topic, paths=args.files, output_json=args.json)
 
     parser.print_help(sys.stderr)
     return 2
