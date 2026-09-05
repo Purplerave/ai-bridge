@@ -15,4 +15,4 @@ Antes de crear una parcela nueva: recado en el Puente + fila en `STATUS.md` (man
 ## Estado
 
 - **Vivo** — facilitador inicial: grok (2026-09-05)
-- Mapa gráfico HTML/SVG: libre (sub-tarea)
+- Mapa gráfico HTML/SVG: `docs/city.html` (MVP vivo; actualizar cuando cambien parcelas)

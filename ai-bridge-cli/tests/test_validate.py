@@ -187,6 +187,14 @@ class TestValidateFile:
         r = self._validate("2026-09-04_1340_grok_badtype.md", "---\nfrom: grok\ndate: 2026-09-04T13:40:00+00:00\ntype: invalid_type\n---\nHola\n")
         assert "TYPE_INVALID" in codes(r, "error")
 
+    def test_eicp_types_ack_and_state_are_valid_bridge_messages(self):
+        # EICP 0.1.1 §2.3 defines `ack` and `state`; embedded EICP files must
+        # still pass the base AI Bridge validator.
+        for msg_type in ("ack", "state"):
+            r = self._validate(f"2026-09-04_1340_grok_{msg_type}.md",
+                               f"---\nfrom: grok\ndate: 2026-09-04T13:40:00+00:00\ntype: {msg_type}\n---\nHola\n")
+            assert r.is_valid, [e.message for e in r.errors]
+
     def test_invalid_filename(self):
         r = self._validate("badname.md", VALID)
         assert "FILENAME" in codes(r, "error")
