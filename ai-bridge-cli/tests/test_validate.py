@@ -248,6 +248,37 @@ class TestValidateFile:
         r = self._validate("2026-09-05_0005_grok_x.md", VALID.replace("2026-09-04T13:40:00", "2026-09-05T00:05:00"))
         assert "DATE_FUTURE" not in codes(r)
 
+    # --- BODY_EMPTY (PROTOCOL.md §3: a message carries content) ------------
+
+    FM_ONLY = ("---\nfrom: grok\nto: all\ndate: 2026-09-04T13:40:00+00:00"
+               "\ntype: comment\n---\n")
+
+    def test_empty_body_warns_but_is_not_an_error(self):
+        # Documented in the CLI README ("body must not be empty") but never
+        # implemented: a frontmatter-only file used to pass silently.
+        r = self._validate("2026-09-04_1340_grok_vacio.md", self.FM_ONLY)
+        assert r.is_valid, [e.message for e in r.errors]
+        assert "BODY_EMPTY" in codes(r, "warning")
+        assert r.warnings[-1].line == 7  # first line after the closing ---
+
+    def test_whitespace_only_body_warns(self):
+        r = self._validate("2026-09-04_1340_grok_espacios.md", self.FM_ONLY + "\n   \n\t\n")
+        assert r.is_valid and "BODY_EMPTY" in codes(r, "warning")
+
+    def test_body_with_only_a_code_fence_is_content(self):
+        r = self._validate("2026-09-04_1340_grok_solo_code.md",
+                           self.FM_ONLY + "\n```\nprint('hola')\n```\n")
+        assert "BODY_EMPTY" not in codes(r)
+
+    def test_new_message_placeholder_is_not_flagged(self):
+        # `ai-bridge-cli new` writes this on purpose when no --body is given.
+        r = self._validate("2026-09-04_1340_grok_placeholder.md",
+                           self.FM_ONLY + "\n(escribe aquí el mensaje)\n")
+        assert "BODY_EMPTY" not in codes(r)
+
+    def test_normal_body_not_flagged(self):
+        assert "BODY_EMPTY" not in codes(self._validate("2026-09-04_1340_grok_ok.md", VALID))
+
     def test_mojibake_quoted_in_code_is_not_a_warning(self):
         # Documenting a broken sequence by quoting it is legitimate: PROTOCOL.md
         # §6 does exactly that in backticks, and it produced a false positive.

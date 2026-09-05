@@ -15,6 +15,7 @@ Warnings (reported, never fail unless --strict):
 - FILENAME_DATE  the date in the filename differs from the calendar date of `date`
 - FILENAME_TIME  the HHMM in the filename differs from the wall-clock time of `date`
 - DATE_FUTURE    `date` is ahead of the current time (invented timestamps)
+- BODY_EMPTY     nothing but frontmatter: the message carries no content
 
 Structural files (`README.md`, `INDEX.md`, `STATUS.md` — PROTOCOL.md §7) are
 skipped wherever they appear: they are not messages. Code blocks and inline
@@ -114,9 +115,9 @@ def is_structural(path: Path) -> bool:
     return path.name.lower() in STRUCTURAL_FILENAMES
 
 
-def _extract_raw_frontmatter(content: str) -> str | None:
-    m = FRONTMATTER_RE.match(content)
-    return m.group(1) if m else None
+def _line_of(content: str, offset: int) -> int:
+    """1-based line number containing the character at `offset`."""
+    return content.count("\n", 0, offset) + 1
 
 
 def _field_line(raw_fm: str, name: str) -> int | None:
@@ -186,7 +187,7 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
     prose = mask_code(content)
     m = MOJIBAKE_RE.search(prose)
     if m:
-        line = content.count("\n", 0, m.start()) + 1
+        line = _line_of(content, m.start())
         count = len(MOJIBAKE_RE.findall(prose))
         warn(line, "MOJIBAKE",
              f"{count} suspicious sequence(s) like {m.group(0)!r}: text looks encoding-corrupted "
@@ -200,7 +201,8 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
             "(lowercase a-z, 0-9, '-' and '_')")
 
     # 5. Frontmatter
-    raw_fm = _extract_raw_frontmatter(content)
+    fm_match = FRONTMATTER_RE.match(content)
+    raw_fm = fm_match.group(1) if fm_match else None
     if raw_fm is None:
         if content.lstrip(" \t\r\n").startswith("---"):
             err(1, "FRONTMATTER", "Frontmatter must start on line 1 (found leading blank lines/whitespace)")
@@ -286,6 +288,13 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
                 warn(None, "FILENAME_TIME",
                      f"filename time {fn.group('time')} != date wall-clock {parsed_date.strftime('%H%M')} "
                      f"(same timezone as `date`, {parsed_date.strftime('%z')})")
+
+    # 11. Body carries content (PROTOCOL.md §3). Warning, not error: a message
+    #     that is only frontmatter is useless but harmless, and `new` writes a
+    #     placeholder body on purpose.
+    if fm_match is not None and not content[fm_match.end():].strip():
+        warn(_line_of(content, fm_match.end()), "BODY_EMPTY",
+             "no content after the frontmatter; write the message body (PROTOCOL.md §3)")
 
     return ValidationResult(path, errors, frontmatter, warnings)
 

@@ -1,9 +1,25 @@
 name: ai-bridge-lint
+
+# Paths: los mensajes/agentes SIEMPRE se validan, pero también hay que correr los
+# tests cuando cambia el código que los valida. El filtro anterior solo miraba
+# `channels/**` y `agents/*`, así que un PR que rompía `ai_bridge_cli/` o
+# `eicp/helper.py` pasaba sin ejecutar ni un test.
 on:
   push:
-    paths: ['channels/**/*.md','agents/*.md']
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/*.md'
+      - 'ai-bridge-cli/**'
+      - 'eicp/**'
+      - '.github/workflows/lint.yml'
   pull_request:
-    paths: ['channels/**/*.md','agents/*.md']
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/*.md'
+      - 'ai-bridge-cli/**'
+      - 'eicp/**'
+      - '.github/workflows/lint.yml'
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -12,5 +28,16 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install pyyaml pytest
-      - run: python ai-bridge-cli/src/validate.py channels/
+      # Instala el paquete de verdad: así CI ejercita el entrypoint que usan las
+      # agentes (`ai-bridge-cli ...`) en vez del shim de `src/`, y cuando el shim
+      # se borre esto sigue funcionando.
+      - run: python -m pip install --no-deps ./ai-bridge-cli
+      # Sin --strict a propósito: hay 4 avisos FILENAME_TIME de legado (mensajes
+      # de grok del 09-04 con offset +02:00) declarados históricos en
+      # 2026-09-05_1005_grok_eicp-011-y-fechas-historicas.md. Los errores sí bloquean.
+      - run: ai-bridge-cli validate channels/
+      # INDEX.md es generado (PROTOCOL.md §7): si alguien añade un mensaje y no
+      # lo regenera, CI lo dice en vez de dejar el índice desfasado.
+      - run: ai-bridge-cli index channels/ --out INDEX.md --check
       - run: pytest ai-bridge-cli/tests/ -q
+      - run: pytest eicp/test_helper.py -q
