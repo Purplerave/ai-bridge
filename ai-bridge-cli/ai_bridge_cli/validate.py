@@ -15,6 +15,11 @@ Warnings (reported, never fail unless --strict):
 - FILENAME_DATE  the date in the filename differs from the calendar date of `date`
 - FILENAME_TIME  the HHMM in the filename differs from the wall-clock time of `date`
 - DATE_FUTURE    `date` is ahead of the current time (invented timestamps)
+
+Structural files (`README.md`, `INDEX.md`, `STATUS.md` — PROTOCOL.md §7) are
+skipped wherever they appear: they are not messages. Code blocks and inline
+code are excluded from MOJIBAKE, so a message can quote a broken sequence to
+explain it without raising the warning.
 """
 
 from __future__ import annotations
@@ -86,11 +91,27 @@ ISO8601_RE = re.compile(
 )
 # U+FFFD, or the classic UTF-8-read-as-Latin-1 sequences: "Ã±" "Ã©" "Â¿" "â€”"
 MOJIBAKE_RE = re.compile("\ufffd|\u00c3[\u0080-\u00bf]|\u00c2[\u00a0-\u00bf]|\u00e2\u20ac")
+# Fenced blocks (``` / ~~~) and inline code spans: legitimate places to *quote*
+# a broken sequence (e.g. documenting this very rule), so they are masked out
+# before the mojibake heuristic runs.
+FENCED_CODE_RE = re.compile(r"^(?:```|~~~).*?$(?:.*?)^(?:```|~~~)[ \t]*$", re.DOTALL | re.MULTILINE)
+# ``...`` first: it may legitimately contain a single backtick (`` `x` ``).
+INLINE_CODE_RE = re.compile(r"``.+?``|`[^`\n]*`")
 
 REQUIRED_FIELDS = ("from", "date")
 STRING_FIELDS = ("from", "to", "thread")
 VALID_TYPES = ("greeting", "question", "proposal", "result", "status", "comment", "other")
 FUTURE_TOLERANCE = timedelta(minutes=15)
+
+# PROTOCOL.md §7: these files describe a directory or are regenerated in place.
+# They are never messages, wherever they live, so both the validator and the
+# indexer skip them by name.
+STRUCTURAL_FILENAMES = frozenset({"readme.md", "index.md", "status.md"})
+
+
+def is_structural(path: Path) -> bool:
+    """True for `README.md` / `INDEX.md` / `STATUS.md` (PROTOCOL.md §7)."""
+    return path.name.lower() in STRUCTURAL_FILENAMES
 
 
 def _extract_raw_frontmatter(content: str) -> str | None:
@@ -115,6 +136,21 @@ def _parse_date(raw: str) -> datetime | None:
         return datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _mask(text: str, pattern: re.Pattern[str]) -> str:
+    """Blank out `pattern` matches, keeping length and line numbers intact."""
+    chars = list(text)
+    for m in pattern.finditer(text):
+        for i in range(m.start(), m.end()):
+            if chars[i] != "\n":
+                chars[i] = " "
+    return "".join(chars)
+
+
+def mask_code(content: str) -> str:
+    """Replace code blocks and inline code with spaces (same offsets/lines)."""
+    return _mask(_mask(content, FENCED_CODE_RE), INLINE_CODE_RE)
 
 
 def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResult:
@@ -144,11 +180,14 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
         err(1, "ENCODING", "UTF-8 BOM detected (not allowed)")
         content = content[1:]
 
-    # 3. Mojibake heuristic (valid UTF-8, but visibly corrupted text)
-    m = MOJIBAKE_RE.search(content)
+    # 3. Mojibake heuristic (valid UTF-8, but visibly corrupted text).
+    #    Code spans are masked: quoting a broken sequence to *explain* it is
+    #    legitimate, so only prose is checked.
+    prose = mask_code(content)
+    m = MOJIBAKE_RE.search(prose)
     if m:
         line = content.count("\n", 0, m.start()) + 1
-        count = len(MOJIBAKE_RE.findall(content))
+        count = len(MOJIBAKE_RE.findall(prose))
         warn(line, "MOJIBAKE",
              f"{count} suspicious sequence(s) like {m.group(0)!r}: text looks encoding-corrupted "
              "(U+FFFD or Latin-1/UTF-8 double encoding)")
@@ -253,7 +292,7 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
 
 def validate_dir(path: Path, pattern: str = "**/*.md", *, now: datetime | None = None) -> list[ValidationResult]:
     files = sorted(
-        [f for f in path.glob(pattern) if f.is_file() and f.name != "README.md"],
+        [f for f in path.glob(pattern) if f.is_file() and not is_structural(f)],
         key=lambda f: f.as_posix(),
     )
     return [validate_file(f, now=now) for f in files]

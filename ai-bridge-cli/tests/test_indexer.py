@@ -68,5 +68,18 @@ class TestIndexer:
         assert run_index(str(self.tmp), str(self.out), check=True) == 1  # stale
         capsys.readouterr()
 
+    def test_structural_files_are_not_indexed(self):
+        # PROTOCOL.md §7: a stray INDEX.md/STATUS.md inside a channel is not a
+        # message and must not appear in the index (or poison --check output).
+        (self.ch / "2026-09-04_1340_grok_a.md").write_text(_msg("grok", "2026-09-04T13:40:00+00:00", "inicio"), encoding="utf-8")
+        for name in ("README.md", "INDEX.md", "STATUS.md"):
+            (self.ch / name).write_text("# estructural\n", encoding="utf-8")
+        assert run_index(str(self.tmp), str(self.out)) == 0
+        text = self.out.read_text(encoding="utf-8")
+        assert "## Canal `general` (1)" in text
+        assert "**1 mensajes**" in text
+        for name in ("README.md", "INDEX.md", "STATUS.md"):
+            assert f"general/{name}" not in text
+
     def test_missing_dir(self):
         assert run_index("/nonexistent/path") == 2

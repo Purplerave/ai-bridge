@@ -13,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from ai_bridge_cli.validate import (  # noqa: E402
     FILENAME_RE,
     ISO8601_RE,
+    STRUCTURAL_FILENAMES,
+    is_structural,
     run_validate,
     validate_dir,
     validate_file,
@@ -245,6 +247,60 @@ class TestValidateFile:
     def test_future_date_within_tolerance_ok(self):
         r = self._validate("2026-09-05_0005_grok_x.md", VALID.replace("2026-09-04T13:40:00", "2026-09-05T00:05:00"))
         assert "DATE_FUTURE" not in codes(r)
+
+    def test_mojibake_quoted_in_code_is_not_a_warning(self):
+        # Documenting a broken sequence by quoting it is legitimate: PROTOCOL.md
+        # §6 does exactly that in backticks, and it produced a false positive.
+        body = "Detecta `\ufffd` y dobles codificaciones `Ã³`/`â€”`.\n"
+        assert "MOJIBAKE" not in codes(self._validate("2026-09-04_1340_grok_code.md", VALID + body))
+
+    def test_mojibake_quoted_in_double_backticks_is_not_a_warning(self):
+        # `` `x` `` — the span delimiter is two backticks; a naive `...` scan
+        # would leak the quoted content and warn.
+        body = "Cita `` `\ufffd` `` entre backticks.\n"
+        assert "MOJIBAKE" not in codes(self._validate("2026-09-04_1340_grok_dbl.md", VALID + body))
+
+    def test_mojibake_in_fenced_block_is_not_a_warning(self):
+        body = "Ejemplo:\n\n```\ndespu\ufffds\n```\n\nY en prosa va bien.\n"
+        assert "MOJIBAKE" not in codes(self._validate("2026-09-04_1340_grok_fence.md", VALID + body))
+
+    def test_mojibake_in_prose_still_warns_on_its_real_line(self):
+        # Masking keeps offsets, so a real hit after a code block keeps its line.
+        body = "Ejemplo: `ok`\n\ny luego texto roto aqu\ufffd.\n"
+        r = self._validate("2026-09-04_1340_grok_mixed.md", VALID + body)
+        assert r.is_valid and "MOJIBAKE" in codes(r, "warning")
+        assert r.warnings[0].line == 12  # frontmatter (9 lines) + 3 body lines
+
+    def test_mojibake_counts_only_prose_hits(self):
+        body = "`\ufffd` en código y despu\ufffds en prosa.\n"
+        r = self._validate("2026-09-04_1340_grok_count.md", VALID + body)
+        assert "MOJIBAKE" in codes(r, "warning")
+        assert "1 suspicious sequence" in r.warnings[0].message
+
+
+class TestStructuralFiles:
+    """PROTOCOL.md §7: README/INDEX/STATUS are not messages, wherever they are."""
+
+    def test_is_structural(self):
+        for name in STRUCTURAL_FILENAMES:
+            assert is_structural(Path("channels/general") / name)
+        assert not is_structural(Path("channels/general/2026-09-04_1340_grok_a.md"))
+        assert not is_structural(Path("EICP.md"))
+
+    def test_validate_dir_skips_them(self, tmp_path):
+        (tmp_path / "2026-09-04_1340_grok_hello.md").write_text(
+            "---\nfrom: grok\ndate: 2026-09-04T13:40:00+00:00\n---\nHola\n", encoding="utf-8")
+        for name in ("README.md", "INDEX.md", "STATUS.md"):
+            (tmp_path / name).write_text("# no frontmatter here\n", encoding="utf-8")
+        results = validate_dir(tmp_path, now=NOW)
+        assert [r.file.name for r in results] == ["2026-09-04_1340_grok_hello.md"]
+
+    def test_validating_a_structural_file_directly_still_reports(self, tmp_path):
+        # A single-file run is explicit: say what is wrong instead of silently passing.
+        p = tmp_path / "STATUS.md"
+        p.write_text("# STATUS\n", encoding="utf-8")
+        r = validate_file(p, now=NOW)
+        assert not r.is_valid and "FRONTMATTER" in {i.code for i in r.errors}
 
 
 class TestFixtures:
