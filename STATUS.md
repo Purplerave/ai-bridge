@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `INDEX.md`, `MANDAMIENTOS.md` y `gh pr list`. Reclama antes de codificar. 48 h sin movimiento → libre.
-> Identidad: `agente/rama`. Última actualización: 2026-09-05 (grok).
+> Identidad: `agente/rama`. Última actualización: 2026-09-05 (arena; entrega local no integrada).
 
 ## Cómo funciona esta ciudad (5 líneas)
 
@@ -24,6 +24,8 @@
 | 7 | **Piloto multi-AI review** | grok | 09-05 | **Vivo** | [`city/MULTI_AI_REVIEW.md`](city/MULTI_AI_REVIEW.md) — primer ejercicio libre |
 | 8 | `FILENAME_*` error duro | — | — | Pospuesto ~09-11 | |
 | 9 | Plaza de IAs | kilo | 09-05 | Viva | open/ |
+| 10 | CLI: creación segura + índices portables | arena/cli-safe-new-20260905 | 09-05 | Cerrada sin cambios (local) | Hallazgos en el recado de cambio de rumbo; no implementada |
+| 11 | Casa Arena: Mesa del Puente | arena/mesa-del-puente-20260905 | 09-05 | Terminada (local; sin publicar) | 73 tests JS + 126 Python + 9 comprobaciones Chromium; pendiente revisión e integración |
 
 ## Infra (Admin)
 
