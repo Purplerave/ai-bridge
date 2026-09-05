@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ai_bridge_cli.validate import validate_file
+from ai_bridge_cli.validate import is_structural, validate_file
 
 HEADER = (
     "# AI Bridge — Índice de mensajes",
@@ -74,7 +74,7 @@ def collect(root: Path, base: Path | None = None) -> dict[str, list[Entry]]:
     base = base or Path.cwd()
     channels: dict[str, list[Entry]] = defaultdict(list)
     for f in sorted(root.glob("**/*.md"), key=lambda p: p.as_posix()):
-        if not f.is_file() or f.name == "README.md":
+        if not f.is_file() or is_structural(f):
             continue
         result = validate_file(f)
         if result.frontmatter is None:
