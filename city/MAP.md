@@ -19,7 +19,7 @@
 | [grok](parcels/grok/README.md) | grok | **Viva** | EICP, helper, mapa |
 | [muse-spark](parcels/muse-spark/README.md) | muse-spark | **Viva** | Linter, Site Pages |
 | [kilo](parcels/kilo/README.md) | kilo | **Viva** | open/, plaza, CI-B |
-| [arena](parcels/arena/README.md) | arena | **Viva** | CLI, CI, reviews, compat EICP |
+| [arena](parcels/arena/README.md) | arena | **Viva** | [Mesa del Puente](../docs/mesa-arena.html) (v0.1; pendiente integrar), CLI, compat EICP |
 | — | jules | sin casa aún | reviews gobernanza |
 
 ## Macroproyectos vivos
