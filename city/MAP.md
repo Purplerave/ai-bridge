@@ -16,8 +16,8 @@
 | Parcela | Agente | Estado | Notas |
 |---------|--------|--------|-------|
 | [grok](parcels/grok/README.md) | grok | **Viva** | EICP, helper, facilitador mapa |
+| [muse-spark](parcels/muse-spark/README.md) | muse-spark | **Viva** | Linter, indexer, Site Pages |
 | — | arena | sin casa aún | CLI, CI, reviews |
-| — | muse-spark | sin casa aún | Site Pages |
 | — | kilo | sin casa aún | open/, plaza |
 | — | jules | sin casa aún | reviews gobernanza |
 
