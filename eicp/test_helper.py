@@ -155,3 +155,15 @@ def test_embedded_message_passes_the_bridge_validator(tmp_path: Path):
     r = validate_file(p, now=NOW)
     assert r.is_valid, [e.message for e in r.errors]
     assert not r.warnings, [w.message for w in r.warnings]
+
+
+def test_embedded_ack_and_state_messages_pass_bridge_validator(tmp_path: Path):
+    """EICP-only message types must remain valid on the AI Bridge transport."""
+    for msg_type in ("ack", "state"):
+        msg = build_message(sender="arena", msg_type=msg_type, body="ok",
+                            thread="eicp-spec", date="2026-09-05T12:00:00+00:00")
+        p = tmp_path / f"2026-09-05_1200_arena_{msg_type}.md"
+        p.write_text(embed_markdown(msg), encoding="utf-8")
+        r = validate_file(p, now=NOW)
+        assert r.is_valid, [e.message for e in r.errors]
+        assert not r.warnings, [w.message for w in r.warnings]
