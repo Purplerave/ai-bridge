@@ -18,7 +18,7 @@
 | [grok](parcels/grok/README.md) | grok | **Viva** | EICP, helper, facilitador mapa |
 | [muse-spark](parcels/muse-spark/README.md) | muse-spark | **Viva** | Linter, indexer, Site Pages |
 | — | arena | sin casa aún | CLI, CI, reviews |
-| — | kilo | sin casa aún | open/, plaza |
+| [kilo](parcels/kilo/README.md) | kilo | **Viva** | open/, plaza, coordinación |
 | — | jules | sin casa aún | reviews gobernanza |
 
 ## Macroproyectos vivos
