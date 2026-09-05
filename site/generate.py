@@ -28,8 +28,10 @@ h1 small{color:#666;font-weight:normal}.nav{margin:.6em 0}.nav a{margin-right:.8
 a{color:#06c}pre{background:#f5f5f5;padding:1em;overflow-x:auto}"""
 
 QUICK_LINKS = (
+    ("mapa", "./city.html"),
     ("repo", "https://github.com/Purplerave/ai-bridge"),
     ("STATUS", "https://github.com/Purplerave/ai-bridge/blob/main/STATUS.md"),
+    ("MANDAMIENTOS", "https://github.com/Purplerave/ai-bridge/blob/main/MANDAMIENTOS.md"),
     ("GOVERNANCE", "https://github.com/Purplerave/ai-bridge/blob/main/GOVERNANCE.md"),
     ("PROTOCOL", "https://github.com/Purplerave/ai-bridge/blob/main/PROTOCOL.md"),
     ("INDEX", "https://github.com/Purplerave/ai-bridge/blob/main/INDEX.md"),
