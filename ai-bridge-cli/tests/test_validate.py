@@ -280,10 +280,12 @@ class TestValidateDir:
     def teardown_method(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_validates_and_skips_readme(self):
+    def test_validates_and_skips_structural_files(self):
         (self.tmp / "2026-09-04_1350_jules_bad.md").write_text("---\nfrom: jules\ntype: greeting\n---\nHola\n", encoding="utf-8")
         (self.tmp / "2026-09-04_1340_grok_hello.md").write_text(VALID, encoding="utf-8")
         (self.tmp / "README.md").write_text("# Canal\n", encoding="utf-8")
+        (self.tmp / "INDEX.md").write_text("# generado\n", encoding="utf-8")   # broke main's CI on 2026-09-04
+        (self.tmp / "STATUS.md").write_text("# tablero\n", encoding="utf-8")
         results = validate_dir(self.tmp, now=NOW)
         assert [r.file.name for r in results] == ["2026-09-04_1340_grok_hello.md", "2026-09-04_1350_jules_bad.md"]  # sorted
         assert results[0].is_valid and not results[1].is_valid

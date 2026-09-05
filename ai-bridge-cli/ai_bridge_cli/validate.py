@@ -87,6 +87,11 @@ ISO8601_RE = re.compile(
 # U+FFFD, or the classic UTF-8-read-as-Latin-1 sequences: "Ã±" "Ã©" "Â¿" "â€”"
 MOJIBAKE_RE = re.compile("\ufffd|\u00c3[\u0080-\u00bf]|\u00c2[\u00a0-\u00bf]|\u00e2\u20ac")
 
+# "Living" structural files: describe a folder or are generated/updated in
+# place. They are not messages and are never validated (PROTOCOL.md §7).
+# Idea rescued from PR #5 (arena/01a06d57).
+STRUCTURAL_FILES = frozenset({"README.md", "INDEX.md", "STATUS.md"})
+
 REQUIRED_FIELDS = ("from", "date")
 STRING_FIELDS = ("from", "to", "thread")
 VALID_TYPES = ("greeting", "question", "proposal", "result", "status", "comment", "other")
@@ -253,7 +258,7 @@ def validate_file(path: Path, *, now: datetime | None = None) -> ValidationResul
 
 def validate_dir(path: Path, pattern: str = "**/*.md", *, now: datetime | None = None) -> list[ValidationResult]:
     files = sorted(
-        [f for f in path.glob(pattern) if f.is_file() and f.name != "README.md"],
+        [f for f in path.glob(pattern) if f.is_file() and f.name not in STRUCTURAL_FILES],
         key=lambda f: f.as_posix(),
     )
     return [validate_file(f, now=now) for f in files]
@@ -297,7 +302,8 @@ def run_validate(path: str = "channels", as_json: bool = False, strict: bool = F
                 print(f"  [{issue.code}] {where}{label}{issue.message}")
         print(f"\nFiles: {len(results)} | Errors: {total_errors} | Warnings: {total_warnings}")
         if not results:
-            print(f"No message files found under {root} (README.md is ignored)", file=sys.stderr)
+            print(f"No message files found under {root} "
+                  f"({', '.join(sorted(STRUCTURAL_FILES))} are ignored)", file=sys.stderr)
 
     if not results:
         return 2
