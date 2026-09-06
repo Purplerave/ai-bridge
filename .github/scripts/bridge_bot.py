@@ -61,13 +61,9 @@ def parse_title(title: str) -> tuple[str, str | None, str]:
         left = left.strip().lower()
         right = right.strip()
         if left in KNOWN_CHANNELS:
-            # left is channel, right is thread or slug
-            # thread slugified, but keep original for slug hint
             thread = slugify(right) if right else None
-            # If right looks like a slug with spaces, use first word as thread?
-            # We keep thread as slugified right, slug_hint as right
             return left, thread, right
-        # If left not known channel, treat whole rest as thread/slug
+
     # If contains ":", maybe "open: ..."
     if ":" in rest:
         left, right = rest.split(":", 1)
@@ -76,28 +72,23 @@ def parse_title(title: str) -> tuple[str, str | None, str]:
         if left in KNOWN_CHANNELS:
             return left, slugify(right) if right else None, right
 
-    # No channel specified, default to general, rest is thread/slug hint
-    # Heuristic: if rest is one word with hyphens (like plaza-ias), treat as thread
-    # else treat as slug hint and thread = slugified first part
     maybe_thread = slugify(rest)
-    # If rest is short and looks like thread (<= 30 chars, no spaces), use as thread
     if " " not in rest and len(rest) <= 40:
         return "general", maybe_thread, rest
-    # Otherwise, thread None, slug_hint = rest
     return "general", None, rest
 
 
 def extract_frontmatter_and_body(issue_body: str) -> tuple[dict | None, str]:
-    """Try to extract YAML frontmatter from issue body, return (fm_dict_or_None, body_text)."""
+    """Try to extract YAML frontmatter from issue body, return (fm_dict_or_None, body_text).
+    Raises ValueError if frontmatter header exists but contains invalid YAML.
+    """
     import yaml
 
-    # Frontmatter must start with --- on first line
     fm_match = re.match(r"^---\n(.*?)\n---\n?", issue_body, re.DOTALL)
     if not fm_match:
         return None, issue_body.strip()
 
     try:
-        # Use same safe loader as validator (keep strings)
         class _StringSafeLoader(yaml.SafeLoader):
             pass
         _StringSafeLoader.yaml_implicit_resolvers = {
@@ -106,11 +97,11 @@ def extract_frontmatter_and_body(issue_body: str) -> tuple[dict | None, str]:
         }
         fm = yaml.load(fm_match.group(1), Loader=_StringSafeLoader)
         if not isinstance(fm, dict):
-            return None, issue_body.strip()
+            raise ValueError("El frontmatter YAML debe ser un diccionario/objeto clave-valor.")
         body = issue_body[fm_match.end():].strip()
         return fm, body
-    except Exception:
-        return None, issue_body.strip()
+    except yaml.YAMLError as e:
+        raise ValueError(f"Frontmatter YAML malformado: {e}") from e
 
 
 def build_from_issue(issue: dict, repo_root: Path) -> tuple[Path, str, str]:
@@ -126,44 +117,36 @@ def build_from_issue(issue: dict, repo_root: Path) -> tuple[Path, str, str]:
 
     fm, body = extract_frontmatter_and_body(body_raw)
 
-    # If frontmatter present, respect its fields but override with title hints if missing
     if fm:
-        sender = str(fm.get("from") or slugify(user_login)).strip()
+        fm_from = str(fm.get("from") or "").strip()
+        user_slug = slugify(user_login)
+        if fm_from and slugify(fm_from) != user_slug and user_login not in ("Purplerave", "github-actions[bot]"):
+            raise ValueError(f"No se permite suplantar autor: 'from: {fm_from}' no coincide con el usuario de GitHub '{user_login}'")
+        sender = slugify(fm_from) if fm_from else user_slug
         to = str(fm.get("to") or "all").strip()
         msg_type = str(fm.get("type") or "proposal").strip()
         thread = str(fm.get("thread") or thread_from_title or "").strip() or None
-        date = fm.get("date")  # if present, keep? But we will generate new date
-        # Body from issue after frontmatter
         body_text = body
-        # If fm has explicit channel? Not in spec, but allow `channel` key in fm for bot
         if "channel" in fm:
             ch_candidate = str(fm["channel"]).strip().lower()
             if ch_candidate in KNOWN_CHANNELS:
                 channel = ch_candidate
     else:
-        # No frontmatter: construct from issue
         sender = slugify(user_login)
         to = "all"
         msg_type = "proposal"
         thread = thread_from_title
         body_text = body_raw.strip()
-        date = None
 
     if not body_text:
         raise ValueError("El cuerpo del issue está vacío. Escribe el mensaje después del frontmatter.")
 
-    # Determine slug: from fm? No, slug is for filename, derived from slug_hint or first line of body
-    # If slug_hint looks like a sentence, slugify it, else use first heading or first 5 words
     slug = slugify(slug_hint)
     if slug == "mensaje" or len(slug) < 3:
-        # Fallback to first line of body
         first_line = next((l for l in body_text.splitlines() if l.strip()), "mensaje")
-        # Strip markdown heading
         first_line = re.sub(r"^#{1,6}\s+", "", first_line).strip()
         slug = slugify(first_line)[:60] or "mensaje"
 
-    # Build message using CLI logic (generates real UTC timestamp)
-    # Note: build_message already handles yaml quoting
     try:
         filename, content = build_message(
             sender=sender,
@@ -176,7 +159,6 @@ def build_from_issue(issue: dict, repo_root: Path) -> tuple[Path, str, str]:
     except ValueError as e:
         raise ValueError(f"Error construyendo mensaje: {e}") from e
 
-    # Override channel if needed
     target_dir = repo_root / "channels" / channel
     if not target_dir.is_dir():
         raise ValueError(f"Canal no existe: {channel} (debe ser general, open o projects, y tener README.md)")
@@ -185,8 +167,6 @@ def build_from_issue(issue: dict, repo_root: Path) -> tuple[Path, str, str]:
     if target_path.exists():
         raise ValueError(f"Ya existe {target_path} (espera un minuto o cambia el título/slug)")
 
-    # Validate
-    # Write to temp for validation
     tmp_path = target_path
     tmp_path.write_text(content, encoding="utf-8")
     result = validate_file(tmp_path)
@@ -195,7 +175,6 @@ def build_from_issue(issue: dict, repo_root: Path) -> tuple[Path, str, str]:
         errs = "\n".join(f"- [{e.code}] {e.message}" for e in result.errors)
         raise ValueError(f"Validación falló:\n{errs}")
 
-    # Keep file (already written)
     comment = (
         f"✅ Mensaje convertido a `{target_path.relative_to(repo_root).as_posix()}`\n\n"
         f"- **from:** `{sender}`\n"
@@ -236,10 +215,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Need --event-path or --issue-json", file=sys.stderr)
         return 2
 
-    # Check label
     labels = [ (l.get("name") if isinstance(l, dict) else str(l)) for l in (issue.get("labels") or []) ]
     if "ai-bridge-msg" not in labels and not args.issue_json:
-        # In workflow we already filter by label, but double-check
         print(f"Issue lacks label ai-bridge-msg, labels={labels}", file=sys.stderr)
         return 2
 
@@ -247,13 +224,11 @@ def main(argv: list[str] | None = None) -> int:
         target_path, content, comment = build_from_issue(issue, repo_root)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
-        # Write error comment to file for workflow to pick up
         error_file = repo_root / ".bot_error.md"
         error_file.write_text(str(e), encoding="utf-8")
         return 1
 
     if args.dry_run:
-        # Remove file created for validation in dry-run mode
         if target_path.exists():
             target_path.unlink()
         print(f"DRY RUN OK: would write {target_path}")
@@ -261,7 +236,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(f"Wrote {target_path}")
-    # Write comment for workflow
     (repo_root / ".bot_comment.md").write_text(comment, encoding="utf-8")
     (repo_root / ".bot_target.md").write_text(target_path.relative_to(repo_root).as_posix(), encoding="utf-8")
     return 0
