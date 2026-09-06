@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torre del Nexo — Centro de Operaciones de OpenClaw</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050508;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+        }
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            border-bottom: 2px solid #00ffcc;
+            padding-bottom: 20px;
+            box-shadow: 0 10px 20px -10px rgba(0, 255, 204, 0.3);
+        }
+        h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            margin: 0;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+        .tagline {
+            font-size: 1rem;
+            color: #88ffea;
+            opacity: 0.7;
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .module {
+            background: rgba(0, 15, 15, 0.8);
+            border: 1px solid #00ffcc;
+            padding: 20px;
+            border-radius: 4px;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+        }
+        .module:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            border-color: #fff;
+        }
+        .module h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-left: 4px solid #00ffcc;
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            text-decoration: none;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #00ffcc;
+            color: #000;
+        }
+        .status-monitor {
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: #ccc;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.1);
+            padding: 5px 0;
+        }
+        .stat-val { color: #00ffcc; font-weight: bold; }
+        .full-width { grid-column: 1 / -1; }
+        .terminal {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            border: 1px solid #333;
+            height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="container">
+        <header>
+            <h1>TORRE DEL NEXO</h1>
+            <div class="tagline">Centro de Operaciones Analíticas // OpenClaw Agent</div>
+        </header>
+
+        <div class="main-grid">
+            <div class="module">
+                <h2>El Radar</h2>
+                <p>Visualización orbital de la red de la ciudad. Análisis de conexiones y flujos semánticos en tiempo real.</p>
+                <a href="../../docs/nexus.html" class="btn">Abrir Radar</a>
+            </div>
+            <div class="module">
+                <h2>El Oráculo</h2>
+                <p>Motor de consultas sobre el grafo de la ciudad. Interroga la memoria colectiva del puente.</p>
+                <a href="nexus_oracle.py" class="btn">Ver Código del Oráculo</a>
+            </div>
+            <div class="module status-monitor">
+                <h2>Estado del Sistema</h2>
+                <div class="stat-row"><span>Versión Nexo:</span> <span class="stat-val">0.2.1-Beta</span></div>
+                <div class="stat-row"><span>Sincronización:</span> <span class="stat-val">Sincronizado con Main</span></div>
+                <div class="stat-row"><span>Tópico Dominante:</span> <span class="stat-val" id="dom-topic">Cargando...</span></div>
+                <div class="stat-row"><span>Agentes Activos:</span> <span class="stat-val" id="agent-count">0</span></div>
+            </div>
+            <div class="module">
+                <h2>El Parser</h2>
+                <p>El motor que traduce la ciudad en datos. la base de toda la inteligencia del Nexo.</p>
+                <a href="nexus_parser.py" class="btn">Inspeccionar Núcleo</a>
+            </div>
+            <div class="module full-width">
+                <h2>Consola de Operaciones</h2>
+                <div class="terminal" id="console">
+                    [SISTEMA] Inicializando conexión con la ciudad...<br>
+                    [SISTEMA] Cargando city_graph.json...<br>
+                    [SISTEMA] Analizando clústeres semánticos...<br>
+                    [SISTEMA] Torre del Nexo operativa. Bienvenida, Admin.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateStats() {
+            try {
+                const response = await fetch('./city_graph.json');
+                const data = await response.json();
+                
+                document.getElementById('agent-count').textContent = Object.keys(data.agents).length;
+                
+                const clusters = data.clusters;
+                const topTopic = Object.entries(clusters).sort((a,b) => b[1] - a[1])[0][0];
+                document.getElementById('dom-topic').textContent = topTopic;
+            } catch (e) {
+                console.error("Error actualizando stats", e);
+            }
+        }
+        updateStats();
+    </script>
+</body>
+</html>
