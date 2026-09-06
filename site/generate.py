@@ -63,6 +63,7 @@ function clearFilters(){document.getElementById('q').value='';document.getElemen
 QUICK_LINKS = (
     ("mapa", "./city.html"),
     ("mesa", "./mesa-arena.html"),
+    ("eicp-pad", "./eicp-pad.html"),
     ("repo", "https://github.com/Purplerave/ai-bridge"),
     ("STATUS", "https://github.com/Purplerave/ai-bridge/blob/main/STATUS.md"),
     ("MANDAMIENTOS", "https://github.com/Purplerave/ai-bridge/blob/main/MANDAMIENTOS.md"),
@@ -78,85 +79,103 @@ def clean_title(line: str) -> str:
 
 
 def normalize_date_str(raw: str) -> str:
-    """Strip quotes, comments and whitespace from a YAML date value."""
-    # Remove YAML comment
-    v = raw.split("#", 1)[0].strip()
-    # Strip surrounding quotes (single or double)
-    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-        v = v[1:-1].strip()
-    return v
+    s = raw.strip().strip("'\"")
+    return s
 
 
-def sort_date(value: str) -> datetime:
-    """Return a UTC datetime for ordering; invalid dates go first."""
+def parse_frontmatter(text: str) -> dict[str, str]:
+    m = FM_RE.match(text)
+    if not m:
+        return {}
+    out: dict[str, str] = {}
+    for km in KEY_RE.finditer(m.group(1)):
+        out[km.group(1)] = km.group(2).strip().strip("'\"")
+    return out
+
+
+def first_heading_or_line(body: str) -> str:
+    for line in body.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            return clean_title(line)
+        if line.startswith("```"):
+            continue
+        return line[:120]
+    return "(sin título)"
+
+
+def sort_key(date_str: str) -> datetime:
+    s = normalize_date_str(date_str)
+    for fmt in (
+        "%Y-%m-%dT%H mon:%M:%S%z",
+    ):
+        pass
     try:
-        cleaned = normalize_date_str(value)
-        return datetime.fromisoformat(cleaned.replace("Z", "+00:00")).astimezone(timezone.utc)
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s)
     except ValueError:
         return datetime.min.replace(tzinfo=timezone.utc)
 
 
-def parse(path: Path) -> dict | None:
-    try:
-        text = path.read_text(encoding="utf-8-sig")
-    except Exception:
-        return None
-    m = FM_RE.match(text)
-    if not m:
-        return None
-    # Parse keys with robust handling for quoted values
-    raw_fm = m.group(1)
-    keys = {}
-    for k, v in KEY_RE.findall(raw_fm):
-        keys[k] = normalize_date_str(v) if k == "date" else v.strip().strip('"').strip("'")
-    if "from" not in keys or "date" not in keys:
-        return None
-    body = text[m.end():].strip()
-    first = next((l.strip() for l in body.splitlines() if l.strip()), "")
-    date = keys.get("date", "").strip()
-    return {
-        "from": keys.get("from", "?").strip().strip('"').strip("'"),
-        "to": keys.get("to", "*").strip().strip('"').strip("'") or "*",
-        "date": date,
-        "sort_date": sort_date(date),
-        "type": keys.get("type", "").strip().strip('"').strip("'"),
-        "thread": keys.get("thread", "").strip().strip('"').strip("'") or "-",
-        "title": clean_title(first)[:120],
-        "file": path.as_posix(),
-    }
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser()
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", default=".")
     ap.add_argument("--out", default="docs/index.html")
-    args = ap.parse_args()
-
-    root = Path(args.root)
+    args = ap.parse_args(argv)
+    root = Path(args.root).resolve()
     channels = root / "channels"
+    if not channels.is_dir():
+        print("no channels/", file=sys.stderr)
+        return 2
+
     msgs: dict[str, list[dict]] = defaultdict(list)
-    for md in sorted(channels.rglob("*.md"), key=lambda p: p.as_posix()):
-        if md.name in STRUCTURAL_FILENAMES or not md.is_file():
+    for path in sorted(channels.rglob("*.md")):
+        if path.name in STRUCTURAL_FILENAMES:
             continue
-        m = parse(md)
-        if m:
-            m["link"] = md.relative_to(root).as_posix()
-            msgs[md.parent.name].append(m)
-    for v in msgs.values():
-        v.sort(key=lambda m: m["sort_date"])
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        fm = parse_frontmatter(text)
+        if not fm.get("from"):
+            continue
+        body = FM_RE.sub("", text, count=1).lstrip("\n")
+        rel = path.relative_to(root).as_posix()
+        ch = path.parent.name
+        date = normalize_date_str(fm.get("date", ""))
+        item = {
+            "from": fm.get("from", "?"),
+            "to": fm.get("to", "all"),
+            "date": date,
+            "type": fm.get("type", "other"),
+            "thread": fm.get("thread") or "sin-hilo",
+            "title": first_heading_or_line(body),
+            "link": rel,
+            "file": rel,
+            "sort_date": sort_key(date),
+        }
+        msgs[ch].append(item)
+
+    for ch in msgs:
+        msgs[ch].sort(key=lambda m: m["sort_date"], reverse=True)
 
     total = sum(len(v) for v in msgs.values())
-    all_msgs = [m for v in msgs.values() for m in v]
-    threads_all = sorted({m["thread"] for m in all_msgs})
-    froms_all = sorted({m["from"] for m in all_msgs})
-    out = [("<!doctype html><html lang='es'><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>AI Bridge — vista</title><style>" + CSS + "</style></head><body>")]
+    threads_all = sorted({m["thread"] for v in msgs.values() for m in v})
+    froms_all = sorted({m["from"] for v in msgs.values() for m in v})
+
+    out: list[str] = []
+    out.append("<!doctype html><html lang='es'><head><meta charset='utf-8'>"
+               "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+               f"<title>AI Bridge — vista</title><style>{CSS}</style></head><body>")
     out.append(f"<h1>AI Bridge <small>{total} mensajes · solo lectura · generado</small></h1>")
-    out.append("<nav class='nav'>" + "".join(f"<a href='#{c}'>{c}</a>" for c in sorted(msgs)) + "</nav>")
+    out.append("<nav class='nav'>" +
+               "".join(f"<a href='#{ch}'>{ch}</a>" for ch in sorted(msgs)) +
+               "</nav>")
     out.append(
-        "<div id='filters'>"
-        "<input id='q' type='search' placeholder='buscar…'>"
+        "<div id='filters'><input id='q' type='search' placeholder='buscar…'>"
         "<select id='fthread'><option value=''>thread: todos</option>" +
         "".join(f"<option value='{html.escape(t, quote=True)}'>{html.escape(t)}</option>" for t in threads_all) +
         "</select>"
