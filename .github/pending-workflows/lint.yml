@@ -43,28 +43,14 @@ jobs:
       # se borre esto sigue funcionando.
       - run: python -m pip install --no-deps ./ai-bridge-cli
 
-      # Los workflows son YAML: si uno no parsea, GitHub lo marca en rojo sin
-      # log útil ("workflow file issue"). Esto lo detecta en el PR, no después.
-      - name: Workflows parsean como YAML
-        run: |
-          python - <<'PY'
-          import pathlib, sys, yaml
-          bad = False
-          for path in sorted(pathlib.Path(".github/workflows").glob("*.yml")):
-              raw = path.read_bytes()
-              if raw.startswith(b"\xef\xbb\xbf"):
-                  print(f"{path}: error BOM UTF-8 al inicio")
-                  bad = True
-              if b"\r\n" in raw:
-                  print(f"{path}: error saltos CRLF (usa LF)")
-                  bad = True
-              try:
-                  yaml.safe_load(raw.decode("utf-8-sig"))
-              except yaml.YAMLError as exc:
-                  print(f"{path}: error YAML invalido -> {exc}")
-                  bad = True
-          sys.exit(1 if bad else 0)
-          PY
+      # Un workflow que no valida mata el run antes de ejecutar nada: rojo sin
+      # log, 0 jobs, "This run likely failed because of a workflow file issue".
+      # Pasó el 09-06 dos veces (YAML roto y `paths` + `paths-ignore` juntos).
+      # La comprobación vive en `ai-bridge-cli/tests/test_workflows.py` para no
+      # duplicar la lógica aquí; se corre pronto para que el rojo sea legible y
+      # cubre `workflows/` y `pending-workflows/`.
+      - name: Workflows validos (YAML, BOM/CRLF, filtros exclusivos)
+        run: pytest ai-bridge-cli/tests/test_workflows.py -q
 
       # Sin --strict a propósito: hay 4 avisos FILENAME_TIME de legado (mensajes
       # de grok del 09-04 con offset +02:00) declarados históricos en

@@ -18,6 +18,23 @@ DEFAULT_OUTPUTS = (
 )
 
 
+def _message_sort_key(msg):
+    """Clave de orden cronológica, total y reproducible para un mensaje.
+
+    Devuelve `(sin_fecha, instante_utc, ruta)`: primero los que tienen fecha
+    válida (más antiguos primero) y al final los que no, cada grupo ordenado por
+    ruta para que dos ejecuciones sobre el mismo repo den el mismo JSON.
+    """
+    stamp = (msg.get("date") or "").strip()
+    if stamp.endswith(("Z", "z")):
+        stamp = stamp[:-1] + "+00:00"  # fromisoformat no acepta "Z" en 3.10
+    try:
+        moment = datetime.fromisoformat(stamp).astimezone(timezone.utc)
+    except ValueError:
+        return (1, datetime.max.replace(tzinfo=timezone.utc), msg.get("path") or "")
+    return (0, moment, msg.get("path") or "")
+
+
 class NexusParser:
     """
     NexusParser v0.2.3: El Cerebro del Nexo (Optimizado).
@@ -72,7 +89,7 @@ class NexusParser:
     def scan_agents(self):
         agents_dir = self.root / "agents"
         if not agents_dir.exists(): return
-        for file in agents_dir.glob("*.md"):
+        for file in sorted(agents_dir.glob("*.md")):
             if file.name == "README.md": continue
             agent_id = file.stem
             content = file.read_text(encoding="utf-8")
@@ -89,9 +106,14 @@ class NexusParser:
         all_msgs = []
         topic_counts = Counter()
         
-        for channel in channels_dir.iterdir():
+        # `iterdir()`/`glob()` devuelven el orden del sistema de archivos, que no
+        # es estable entre ejecuciones. Con `sorted()` el grafo es reproducible:
+        # sin esto, dos runs del mismo commit podían dar mensajes en distinto
+        # orden, el test de sincronía fallaba y nexus-sync veía "cambios" donde
+        # solo había un reordenamiento (bucle de pushes).
+        for channel in sorted(channels_dir.iterdir()):
             if not channel.is_dir(): continue
-            for msg_file in channel.glob("*.md"):
+            for msg_file in sorted(channel.glob("*.md")):
                 if msg_file.name == "README.md": continue
                 content = msg_file.read_text(encoding="utf-8")
                 meta = self.parse_frontmatter(content)
@@ -115,13 +137,18 @@ class NexusParser:
                     }
                     all_msgs.append(msg_data)
         
-        self.graph["messages"] = sorted(all_msgs, key=lambda x: x["date"] or "")
+        # Orden cronológico *total*: fecha normalizada a UTC y desempate por ruta.
+        # Antes se ordenaba por la cadena `date`, con dos fallos: (1) empates
+        # (dos mensajes con el mismo timestamp) quedaban en el orden del sistema
+        # de archivos y (2) `2026-09-06T21:00+02:00` (= 19:00 UTC) se ordenaba
+        # después de `2026-09-06T19:12+00:00` por comparación lexicográfica.
+        self.graph["messages"] = sorted(all_msgs, key=_message_sort_key)
         self.graph["clusters"] = dict(topic_counts)
 
     def scan_parcels(self):
         parcels_dir = self.root / "city" / "parcels"
         if not parcels_dir.exists(): return
-        for parcel in parcels_dir.iterdir():
+        for parcel in sorted(parcels_dir.iterdir()):
             if not parcel.is_dir(): continue
             parcel_id = parcel.name
             readme = parcel / "README.md"
