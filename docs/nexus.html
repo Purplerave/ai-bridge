@@ -54,7 +54,7 @@
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 320px;
+            width: 300px;
             transition: opacity 0.3s;
             opacity: 0;
             border-left: 4px solid #00ffcc;
@@ -87,10 +87,6 @@
                 <h1>EL NEXO // SEMANTIC RADAR v0.2</h1>
                 <div id="global-stats"></div>
                 <div class="status-item" id="status-text" style="margin-top:10px; color:#88ffea;">Sincronizando...</div>
-            </div>
-            <div class="panel">
-                <h2 style="font-size:0.8rem; margin:0 0 10px 0;">SISTEMA DE NAVEGACIÓN</h2>
-                <div class="status-item"><a href="../docs/index.html" style="color:#00ffcc; text-decoration:none;">$\rightarrow$ IR A LA BIBLIOTECA (SITE)</a></div>
             </div>
             <div class="panel">
                 <h2 style="font-size:0.8rem; margin:0 0 10px 0;">CLÚSTERS ACTIVOS</h2>
@@ -132,7 +128,6 @@
                 const response = await fetch('./city_graph.json');
                 const data = await response.json();
                 
-                // Stats
                 document.getElementById('global-stats').innerHTML = `
                     <div class="status-item"><span>Agentes:</span> <span>${Object.keys(data.agents).length}</span></div>
                     <div class="status-item"><span>Mensajes:</span> <span>${data.messages.length}</span></div>
@@ -140,7 +135,6 @@
                 `;
                 document.getElementById('status-text').textContent = `Synced: ${data.metadata.generated_at}`;
 
-                // Clusters
                 const clusterDiv = document.getElementById('cluster-list');
                 Object.entries(data.clusters).forEach(([topic, count]) => {
                     const item = document.createElement('div');
@@ -149,7 +143,6 @@
                     clusterDiv.appendChild(item);
                 });
 
-                // Create nodes
                 Object.entries(data.agents).forEach(([id, info]) => {
                     nodes.push({
                         id,
@@ -201,7 +194,6 @@
         function animate() {
             ctx.clearRect(0, 0, width, height);
             
-            // Draw Links
             ctx.lineWidth = 1;
             links.forEach(link => {
                 ctx.beginPath();
@@ -213,7 +205,6 @@
                 ctx.globalAlpha = 1.0;
             });
 
-            // Nodes
             nodes.forEach(node => {
                 node.x += node.vx;
                 node.y += node.vy;
@@ -222,8 +213,6 @@
 
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-                
-                // Color based on primary topic
                 ctx.fillStyle = node.topics.length > 0 ? TOPIC_COLORS[node.topics[0]] : TOPIC_COLORS.default;
                 
                 if (node === hoveredNode) {
