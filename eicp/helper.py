@@ -30,7 +30,9 @@ VALID_TYPES = {
     "comment", "ack", "state", "other",
 }
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
-JSON_FENCE_RE = re.compile(r"```json\n(.*?)\n```\s*$", re.DOTALL)
+# Match any ```json fence, but we will pick the last one at EOF for roundtrip safety
+JSON_FENCE_RE = re.compile(r"```json\n(.*?)\n```", re.DOTALL)
+JSON_FENCE_TRAILING_RE = re.compile(r"\n```json\n.*?\n```\s*\Z", re.DOTALL)
 
 
 def new_id() -> str:
@@ -131,14 +133,37 @@ def parse_markdown(text: str, relative_path: str | None = None) -> dict[str, Any
     m = FRONTMATTER_RE.match(text)
     if not m:
         raise ValueError("missing YAML frontmatter")
-    fm = yaml.safe_load(m.group(1))
+    try:
+        fm = yaml.safe_load(m.group(1))
+    except yaml.YAMLError as e:
+        raise ValueError(f"YAML parse error: {e}") from e
     if not isinstance(fm, dict):
         raise ValueError("frontmatter must be a mapping")
 
     rest = text[m.end() :]
-    fence = JSON_FENCE_RE.search(rest)
-    if fence:
-        data = json.loads(fence.group(1))
+
+    # Find the *last* JSON fence at EOF for roundtrip safety.
+    # If body itself contains ```json blocks, we must not pick the first.
+    # Strategy: find all fences, then pick the last one that is at the very end (trailing).
+    # If none at end, fall back to last fence anywhere (legacy).
+    fences = list(JSON_FENCE_RE.finditer(rest))
+    fence_match = None
+    if fences:
+        # Prefer fence that is at EOF (allow trailing whitespace)
+        for fm_match in reversed(fences):
+            after = rest[fm_match.end():]
+            if not after.strip():
+                fence_match = fm_match
+                break
+        if fence_match is None:
+            # No fence at EOF, take last one (still try to parse)
+            fence_match = fences[-1]
+
+    if fence_match:
+        try:
+            data = json.loads(fence_match.group(1))
+        except json.JSONDecodeError as e:
+            raise ValueError(f"json fence invalid: {e}") from e
         if not isinstance(data, dict):
             raise ValueError("json fence must be an object")
         return data
@@ -165,6 +190,7 @@ def parse_markdown(text: str, relative_path: str | None = None) -> dict[str, Any
         # ISO 8601 and breaks the canonical order of EICP 0.1.1 §3.
         date_raw = date_raw.isoformat()
 
+    # Remove any JSON fence that might have been in body (should not happen if we already returned)
     body = JSON_FENCE_RE.sub("", rest).strip()
     out: dict[str, Any] = {
         "eicp": str(fm.get("eicp") or EICP_VERSION),
@@ -180,9 +206,53 @@ def parse_markdown(text: str, relative_path: str | None = None) -> dict[str, Any
     return out
 
 
+def _encode_slot_component(text: str) -> str:
+    """Encode slot key to filesystem-safe, collision-free name.
+
+    Previous encoding used `.` → `_` which collides `a.b` with `a_b`.
+    New encoding (safe for existing empty state/):
+      `_` → `__u__`
+      `.` → `__d__`
+      `/` → `__s__`
+      any other unsafe char → `__x<hex>__`
+    """
+    # First escape existing `__` markers to avoid ambiguity? We use distinct tokens,
+    # so we need to ensure `__u__` in original doesn't collide. We escape `_` first.
+    # Use placeholder for `_` to avoid double-replacement.
+    # Step 1: replace `_` with `__u__`
+    # But if original contains `__u__`, it would be escaped as `__u__` -> `__u__`? Let's do char-by-char encoding.
+    result = []
+    for ch in text:
+        if ch == "_":
+            result.append("__u__")
+        elif ch == ".":
+            result.append("__d__")
+        elif ch == "/":
+            result.append("__s__")
+        elif re.match(r"[a-zA-Z0-9-]", ch):
+            result.append(ch)
+        else:
+            result.append(f"__x{ord(ch):02x}__")
+    return "".join(result)
+
+
 def slot_path(slot: str, root: Path = Path("state")) -> Path:
-    """Map slot key to state/<slot>.json path (dots → underscores)."""
-    safe = re.sub(r"[^a-zA-Z0-9_.-]+", "_", slot).replace(".", "_")
+    """Map slot key to state/<slot>.json path (collision-free).
+
+    New encoding avoids `project.eicp.status` vs `project_eicp_status` collision.
+    """
+    if not slot or not slot.strip():
+        raise ValueError("slot must be non-empty")
+    # Keep slot readable but safe: encode each char
+    safe = _encode_slot_component(slot.strip())
+    # Ensure not too long and not empty
+    if not safe:
+        safe = "slot"
+    # Limit length to avoid filesystem limits (200 chars)
+    if len(safe) > 200:
+        # Hash suffix to keep uniqueness
+        h = hashlib.sha1(slot.encode("utf-8")).hexdigest()[:8]
+        safe = safe[:180] + "__h" + h + "__"
     return root / f"{safe}.json"
 
 

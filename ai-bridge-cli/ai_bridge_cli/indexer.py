@@ -7,6 +7,7 @@ Markdown index. `--check` mode compares instead of writing (for CI).
 
 from __future__ import annotations
 
+import os
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -55,7 +56,9 @@ def _parse_when(value) -> datetime | None:
         dt = value
     elif isinstance(value, str):
         try:
-            dt = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+            # Strip quotes and comments that site generator might have missed
+            v = value.strip().strip('"').strip("'").split("#")[0].strip()
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
             return None
     else:
@@ -71,7 +74,8 @@ def _sort_key(e: Entry):
 
 def collect(root: Path, base: Path | None = None) -> dict[str, list[Entry]]:
     """channel name -> entries (unsorted). Links are relative to `base` (default: cwd)."""
-    base = base or Path.cwd()
+    base = (base or Path.cwd()).resolve()
+    root_resolved = root.resolve()
     channels: dict[str, list[Entry]] = defaultdict(list)
     for f in sorted(root.glob("**/*.md"), key=lambda p: p.as_posix()):
         if not f.is_file() or is_structural(f):
@@ -79,10 +83,19 @@ def collect(root: Path, base: Path | None = None) -> dict[str, list[Entry]]:
         result = validate_file(f)
         if result.frontmatter is None:
             continue
+        # Portable relative links: use os.path.relpath instead of Path.relative_to
+        # relative_to fails when base is docs/ and file is channels/ (sibling), returning absolute.
         try:
-            rel = f.resolve().relative_to(base.resolve()).as_posix()
-        except ValueError:
-            rel = f.as_posix()
+            rel = os.path.relpath(f.resolve(), base)
+            # Normalize to POSIX for Markdown links
+            rel = Path(rel).as_posix()
+        except Exception:
+            # Fallback: relative to root, or just file name
+            try:
+                rel = os.path.relpath(f.resolve(), root_resolved.parent)
+                rel = Path(rel).as_posix()
+            except Exception:
+                rel = f.name
         channels[f.parent.name].append(Entry(f, rel, result.frontmatter, _parse_when(result.frontmatter.get("date"))))
     return channels
 
@@ -143,7 +156,9 @@ def run_index(path: str = "channels", out: str = "INDEX.md", check: bool = False
         return 2
 
     out_path = Path(out)
-    channels = collect(root, base=out_path.resolve().parent)
+    # base for relative links is the directory containing the output file
+    base_dir = out_path.parent.resolve() if out_path.parent.exists() else Path.cwd().resolve()
+    channels = collect(root, base=base_dir)
     content = render(channels)
 
     if check:
@@ -155,6 +170,7 @@ def run_index(path: str = "channels", out: str = "INDEX.md", check: bool = False
               f"Run: ai-bridge-cli index {path} --out {out}", file=sys.stderr)
         return 1
 
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(content, encoding="utf-8")
     n = sum(len(v) for v in channels.values())
     print(f"Wrote {out_path} ({n} messages in {len(channels)} channels)")

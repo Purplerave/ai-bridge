@@ -67,10 +67,31 @@ def test_path_derived_id_stable():
 
 def test_slot_path_and_write(tmp_path: Path):
     p = write_state_slot("project.eicp.status", "ok", root=tmp_path / "state")
-    assert p.name == "project_eicp_status.json"
+    # New encoding avoids collision: project.eicp.status vs project_eicp_status
+    # Old: project_eicp_status.json (collided). New: project__d__eicp__d__status.json
+    assert "project" in p.name and p.name.endswith(".json")
     data = json.loads(p.read_text(encoding="utf-8"))
     assert data["value"] == "ok"
     assert slot_path("project.eicp.status", tmp_path / "state") == p
+
+
+def test_slot_path_collision_avoidance(tmp_path: Path):
+    # Regression: project.eicp.status and project_eicp_status must not collide
+    p1 = slot_path("project.eicp.status", tmp_path / "state")
+    p2 = slot_path("project_eicp_status", tmp_path / "state")
+    assert p1 != p2, f"Collision: {p1} == {p2}"
+    # Ensure they are distinct and readable
+    write_state_slot("project.eicp.status", "a", root=tmp_path / "state")
+    write_state_slot("project_eicp_status", "b", root=tmp_path / "state")
+    assert read_state_slot("project.eicp.status", tmp_path / "state") == "a"
+    assert read_state_slot("project_eicp_status", tmp_path / "state") == "b"
+
+
+def test_slot_path_with_slash(tmp_path: Path):
+    p = slot_path("a/b.c", tmp_path / "state")
+    assert p.name.endswith(".json")
+    write_state_slot("a/b.c", {"x": 1}, root=tmp_path / "state")
+    assert read_state_slot("a/b.c", tmp_path / "state") == {"x": 1}
 
 
 def test_invalid_type():
@@ -167,3 +188,26 @@ def test_embedded_ack_and_state_messages_pass_bridge_validator(tmp_path: Path):
         r = validate_file(p, now=NOW)
         assert r.is_valid, [e.message for e in r.errors]
         assert not r.warnings, [w.message for w in r.warnings]
+
+
+def test_parse_with_body_containing_json_fence():
+    # Body itself contains a ```json block; parser must pick trailing canonical block
+    msg = build_message(sender="grok", msg_type="comment", body="Ejemplo:\n```json\n{\"foo\": 1}\n```\nFin", date="2026-09-05T12:00:00+00:00")
+    md = embed_markdown(msg)
+    # md contains two json fences: one in body, one canonical at end
+    parsed = parse_markdown(md)
+    assert parsed["id"] == msg["id"]
+    assert "foo" in parsed["body"] or "Ejemplo" in parsed["body"]
+
+
+def test_parse_malformed_yaml_raises_value_error():
+    md = "---\nfrom: grok\ndate: [not: valid: yaml\n---\n\nbody\n"
+    with pytest.raises(ValueError, match="YAML"):
+        parse_markdown(md)
+
+
+def test_parse_yaml_error_not_traceback():
+    # Ensure malformed YAML doesn't escape as yaml.ParserError
+    md = "---\nfrom: grok\nbad: : :\n---\n\nbody\n"
+    with pytest.raises(ValueError):
+        parse_markdown(md)

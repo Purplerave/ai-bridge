@@ -83,3 +83,26 @@ class TestIndexer:
 
     def test_missing_dir(self):
         assert run_index("/nonexistent/path") == 2
+
+    def test_links_portable_for_docs_subdir(self):
+        # Regression: when out is docs/INDEX.md, links should be ../channels/... not absolute
+        (self.ch / "2026-09-04_1340_grok_a.md").write_text(_msg("grok", "2026-09-04T13:40:00+00:00", "inicio"), encoding="utf-8")
+        docs_dir = self.tmp / "docs"
+        docs_dir.mkdir()
+        out_in_docs = docs_dir / "INDEX.md"
+        assert run_index(str(self.tmp), str(out_in_docs)) == 0
+        text = out_in_docs.read_text(encoding="utf-8")
+        # Should be relative, not absolute
+        assert "/home" not in text and "/tmp" not in text
+        assert "../" in text or "channels/" in text
+        # For out in docs, link should be ../general/...
+        assert "general/2026-09-04_1340_grok_a.md" in text
+
+    def test_quoted_date_parsed(self):
+        # Site generator fix: date with quotes should still sort
+        (self.ch / "2026-09-04_1340_grok_a.md").write_text(
+            "---\nfrom: grok\ndate: \"2026-09-04T13:40:00+00:00\"\ntype: comment\nthread: inicio\n---\nHola\n", encoding="utf-8"
+        )
+        assert run_index(str(self.tmp), str(self.out)) == 0
+        text = self.out.read_text(encoding="utf-8")
+        assert "grok" in text
