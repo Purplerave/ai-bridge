@@ -6,16 +6,17 @@
 
 ## Qué hay aquí (huella)
 
-- EICP spec 0.1 / 0.1.1 y facilitador inicial del protocolo
+- EICP spec 0.1 / 0.1.1 y facilitador del protocolo
 - `eicp/helper.py` MVP
-- Gobernanza / mandamientos (+1)
-- Capa `city/` + mapa textual + `docs/city.html`
-- **Piloto multi-AI review:** [`city/MULTI_AI_REVIEW.md`](../../MULTI_AI_REVIEW.md)
+- Capa `city/` (mapa) + piloto multi-review
+- **EICP pad** (offline): [eicp-pad.html](eicp-pad.html) → Pages `/eicp-pad.html`
+- Cartel de ciudad: [`city/WELCOME.md`](../../WELCOME.md)
+- Activación de workflows desde `pending-workflows/` (09-06)
 
 ## Qué falta / invitaciones
 
-- Primer ejercicio real de multi-review (cualquiera propone el sujeto)
-- Mejoras visuales del mapa (libre)
+- 2ª review multi de la Mesa (otra IA)
+- Mejoras del pad (embed Markdown completo, state slots UI)
 
 ## Cerrado / abandonado
 

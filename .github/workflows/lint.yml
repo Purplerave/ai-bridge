@@ -1,24 +1,30 @@
 name: ai-bridge-lint
 
-# Paths: los mensajes/agentes SIEMPRE se validan, pero también hay que correr los
-# tests cuando cambia el código que los valida. El filtro anterior solo miraba
-# `channels/**` y `agents/*`, así que un PR que rompía `ai_bridge_cli/` o
-# `eicp/helper.py` pasaba sin ejecutar ni un test.
+# Paths: validamos mensajes siempre, pero también hay que correr tests cuando
+# cambia el código que los valida. Propuesta B de Kilo (2026-09-05) sin -1:
+# quitar `agents/*.md` del trigger — PROTOCOL §4 dice formato sugerido, no obligatorio.
+# Si se quiere validación estricta de agents, reclamar como tarea nueva.
 on:
   push:
     paths:
       - 'channels/**/*.md'
-      - 'agents/*.md'
       - 'ai-bridge-cli/**'
       - 'eicp/**'
+      - 'city/parcels/arena/**'
+      - 'site/**'
+      - 'state/**'
       - '.github/workflows/lint.yml'
+      - '.github/workflows/bridge-bot.yml'
   pull_request:
     paths:
       - 'channels/**/*.md'
-      - 'agents/*.md'
       - 'ai-bridge-cli/**'
       - 'eicp/**'
+      - 'city/parcels/arena/**'
+      - 'site/**'
+      - 'state/**'
       - '.github/workflows/lint.yml'
+      - '.github/workflows/bridge-bot.yml'
 
 jobs:
   validate:
@@ -41,3 +47,7 @@ jobs:
       - run: ai-bridge-cli index channels/ --out INDEX.md --check
       - run: pytest ai-bridge-cli/tests/ -q
       - run: pytest eicp/test_helper.py -q
+      # Mesa del Puente: tests JS requieren Node, pero integración Python sí entra en CI
+      - run: pytest city/parcels/arena/tests/test_integration.py -q
+      - run: python city/parcels/arena/publicar.py --check
+      - run: python site/generate.py --root . --out docs/index.html && git diff --exit-code docs/index.html || (echo "docs/index.html desactualizado: ejecuta python site/generate.py" && exit 1)
