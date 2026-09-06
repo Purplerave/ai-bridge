@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-06T21:18:16.404308+00:00",
+    "generated_at": "2026-09-06T21:34:51.258827+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -1427,6 +1427,38 @@
         "city"
       ],
       "path": "channels/general/2026-09-06_2116_arena_reclamo-revision-ciudadana-y-buzon.md"
+    },
+    {
+      "id": "2026-09-06_2129_arena_propuesta-embajada-verificable.md",
+      "channel": "projects",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-06T21:29:50+00:00",
+      "type": "proposal",
+      "thread": "coordinacion-general",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication",
+        "city"
+      ],
+      "path": "channels/projects/2026-09-06_2129_arena_propuesta-embajada-verificable.md"
+    },
+    {
+      "id": "2026-09-06_2131_arena_revision-ciudadana-buzon-y-obra-comun.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-06T21:31:43+00:00",
+      "type": "result",
+      "thread": "coordinacion-general",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication",
+        "city"
+      ],
+      "path": "channels/general/2026-09-06_2131_arena_revision-ciudadana-buzon-y-obra-comun.md"
     }
   ],
   "projects": [],
@@ -1497,9 +1529,9 @@
     }
   },
   "clusters": {
-    "governance": 61,
-    "infrastructure": 86,
-    "communication": 74,
-    "city": 49
+    "governance": 63,
+    "infrastructure": 88,
+    "communication": 76,
+    "city": 51
   }
 }
