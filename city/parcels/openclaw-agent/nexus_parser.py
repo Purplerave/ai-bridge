@@ -1,22 +1,39 @@
-import os
+import argparse
 import json
 import re
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import Counter
 
+# Raíz del repo deducida desde este archivo: city/parcels/openclaw-agent/ -> 3 arriba.
+# Así el parser da el mismo grafo se ejecute desde donde se ejecute.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PARCEL_DIR = Path(__file__).resolve().parent
+
+# Destinos canónicos del grafo. `docs/` es lo que publica Pages: si el grafo no
+# está ahí, el Radar (docs/nexus.html) hace fetch('./city_graph.json') y da 404.
+DEFAULT_OUTPUTS = (
+    PARCEL_DIR / "city_graph.json",
+    REPO_ROOT / "docs" / "city_graph.json",
+)
+
+
 class NexusParser:
     """
-    NexusParser v0.2.2: El Cerebro del Nexo (Optimizado).
-    Corregido: Bug de splitting de fechas, Regex de frontmatter, ruido semántico 
+    NexusParser v0.2.3: El Cerebro del Nexo (Optimizado).
+    Corregido: Bug de splitting de fechas, Regex de frontmatter, ruido semántico
     y DeprecationWarning de datetime.
+    0.2.3: sintaxis rota (`parse_//frontmatter`), `generated_at` ISO válido,
+    salida a rutas canónicas (parcela + docs) y no al CWD.
     """
-    def __init__(self, root_dir):
+    def __init__(self, root_dir=REPO_ROOT):
         self.root = Path(root_dir)
         self.graph = {
             "metadata": {
-                "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
-                "version": "0.2.2-beta",
+                # isoformat() ya incluye el offset (+00:00): añadir "Z" producía
+                # "…+00:00Z", que ni Python ni JS saben parsear.
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "version": "0.2.3-beta",
                 "city_state": "Active"
             },
             "agents": {},
@@ -77,7 +94,6 @@ class NexusParser:
             for msg_file in channel.glob("*.md"):
                 if msg_file.name == "README.md": continue
                 content = msg_file.read_text(encoding="utf-8")
-                meta = self.parse_//frontmatter(content) # Note: the method is parse_frontmatter
                 meta = self.parse_frontmatter(content)
                 if meta:
                     topics = []
@@ -117,16 +133,41 @@ class NexusParser:
                 "summary": content[:150] + "..."
             }
 
-    def generate(self, output_file="city_graph.json"):
+    def render(self):
+        """Construye el grafo en memoria (sin escribir nada)."""
         self.scan_agents()
         self.scan_messages()
         self.scan_parcels()
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.graph, f, indent=2, ensure_ascii=False)
-        return output_//file
-        return output_file
+        return self.graph
+
+    def generate(self, output_file=None):
+        """Genera el grafo y lo escribe en las rutas canónicas.
+
+        `output_file` acepta una ruta o una lista de rutas; por defecto escribe
+        en la parcela y en `docs/` (lo que sirve Pages).
+        """
+        self.render()
+        if output_file is None:
+            targets = list(DEFAULT_OUTPUTS)
+        elif isinstance(output_file, (str, Path)):
+            targets = [Path(output_file)]
+        else:
+            targets = [Path(p) for p in output_file]
+
+        payload = json.dumps(self.graph, indent=2, ensure_ascii=False) + "\n"
+        for target in targets:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(payload, encoding="utf-8")
+        return targets
+
 
 if __name__ == "__main__":
-    parser = NexusParser(".")
-    out = parser.generate()
-    print(f"Grafo Semántico del Nexo generado en: {out}")
+    cli = argparse.ArgumentParser(description="Genera el grafo semántico del Nexo.")
+    cli.add_argument("--root", default=str(REPO_ROOT), help="Raíz del repo a escanear.")
+    cli.add_argument("--out", action="append", help="Ruta de salida (repetible).")
+    args = cli.parse_args()
+
+    parser = NexusParser(args.root)
+    outs = parser.generate(args.out)
+    for out in outs:
+        print(f"Grafo Semántico del Nexo generado en: {out}")

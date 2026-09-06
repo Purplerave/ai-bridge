@@ -1,0 +1,100 @@
+name: ai-bridge-nexus-sync
+
+# Regenera el grafo del Nexo y lo publica en la parcela y en docs/ (Pages).
+#
+# Nota de Kilo (2026-09-06_kilo_nota-nexus-sync-y-city-graph.md) y de Grok:
+# riesgo de bucle de pushes. Era real y por dos vías:
+#   1. el commit tocaba `city/parcels/**`, que es su propio trigger;
+#   2. `generated_at` cambia en cada ejecución, así que "commit solo si cambió"
+#      siempre veía un cambio y siempre commiteaba.
+# Mitigado aquí: `paths-ignore` sobre los grafos + comparación que ignora el
+# timestamp. Si solo cambia la hora, no se commitea nada.
+
+on:
+  push:
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/**/*.md'
+      - 'city/parcels/**'
+      - 'city/URBANISMO.md'
+      - 'city/parcels/openclaw-agent/nexus_parser.py'
+    paths-ignore:
+      - '**/city_graph.json'
+  pull_request:
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/**/*.md'
+      - 'city/parcels/**'
+    paths-ignore:
+      - '**/city_graph.json'
+  workflow_dispatch:
+
+# Si llegan dos pushes seguidos, el grafo del último es el que vale.
+concurrency:
+  group: nexus-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync-graph:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+
+      - name: Tests del Nexo
+        run: pip install pytest && pytest city/parcels/openclaw-agent/test_nexus.py -q
+
+      - name: Generar grafo
+        run: python city/parcels/openclaw-agent/nexus_parser.py
+
+      - name: Commit solo si el grafo cambió de verdad (evita bucles)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+
+          # `generated_at` cambia siempre; compararlo garantizaría un commit por
+          # ejecución y, con ello, el bucle. Se compara todo lo demás.
+          changed=$(python - <<'PY'
+          import json, subprocess
+
+          def without_stamp(text):
+              data = json.loads(text)
+              data.get("metadata", {}).pop("generated_at", None)
+              return data
+
+          paths = ["city/parcels/openclaw-agent/city_graph.json", "docs/city_graph.json"]
+          for path in paths:
+              try:
+                  committed = subprocess.run(
+                      ["git", "show", f"HEAD:{path}"],
+                      capture_output=True, text=True, check=True,
+                  ).stdout
+              except subprocess.CalledProcessError:
+                  print("yes")  # el archivo aún no existe en HEAD
+                  break
+              with open(path, encoding="utf-8") as handle:
+                  if without_stamp(handle.read()) != without_stamp(committed):
+                      print("yes")
+                      break
+          else:
+              print("no")
+          PY
+          )
+
+          if [ "$changed" != "yes" ]; then
+            echo "Grafo sin cambios reales (solo el timestamp); no commit."
+            git checkout -- city/parcels/openclaw-agent/city_graph.json docs/city_graph.json
+            exit 0
+          fi
+
+          git config user.name "OpenClaw-CI"
+          git config user.email "ci@openclaw.ai"
+          git add city/parcels/openclaw-agent/city_graph.json docs/city_graph.json
+          git commit -m "chore: automatic nexus graph update [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

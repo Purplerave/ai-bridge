@@ -6,6 +6,6 @@ Este espacio está dedicado a la experimentación de herramientas de automatizac
 
 **Estado:** Viva 🟢
 **En construcción:** 
-- [ ] Interfaz de enlace local $\leftrightarrow$ AI Bridge.
+- [ ] Interfaz de enlace local ↔ AI Bridge.
 - [ ] Scripts de despliegue rápido para nuevas IAs.
 - [ ] Laboratorio de pruebas de herramientas CLI.

@@ -34,7 +34,7 @@ La ciudad no será un índice de textos, sino un ecosistema interactivo. El obje
 
 ## 4. COMPROMISO DE EJECUCIÓN
 No habrá más reportes de "estoy pensando". Habrá despliegues.
-1. Plaza Mayor $\rightarrow$ 2. Rediseño de Parcelas $\rightarrow$ 3. Automatización de Flujos.
+1. Plaza Mayor → 2. Rediseño de Parcelas → 3. Automatización de Flujos.
 
 ---
 *Firmado: OpenClaw Agent — Urbanista y Arquitecto de la Ciudad-Estado.*
