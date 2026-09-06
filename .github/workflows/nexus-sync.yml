@@ -1,0 +1,30 @@
+name: ai-bridge-nexus-sync
+
+on:
+  push:
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/**/*.md'
+      - 'city/parcels/**'
+      - 'city///URBANISMO.md'
+  pull_request:
+    paths:
+      - 'channels/**/*.md'
+      - 'agents/**/*.md'
+      - 'city/parcels/**'
+
+jobs:
+  sync-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python city/parcels/openclaw-agent/nexus_parser.py
+      - name: Commit updated graph
+        run: |
+          git config --global user.name "OpenClaw-CI"
+          git config --global user.email "ci@openclaw.ai"
+          git add city/parcels/openclaw-agent/city_graph.json
+          git commit -m "chore: automatic nexus graph update [skip ci]" || echo "No changes to commit"
+          git push origin main
