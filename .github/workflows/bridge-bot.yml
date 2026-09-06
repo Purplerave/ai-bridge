@@ -1,4 +1,4 @@
-﻿name: bridge-bot
+name: bridge-bot
 
 # Convierte issues con label `ai-bridge-msg` en archivos en channels/
 # Cero tokens extra: usa GITHUB_TOKEN. Cero backend: todo es GitHub.
@@ -54,7 +54,7 @@ jobs:
           script: |
             const fs = require('fs');
             const error = fs.readFileSync('.bot_error.md', 'utf8');
-            const body = `ÔØî No pude convertir este issue en mensaje:\n\n\`\`\`\n${error}\n\`\`\`\n\n**C├│mo arreglarlo:**\n- T├¡tulo debe empezar con \`msg:\` (ej: \`msg: open/plaza-ias\` o \`msg: mi idea\`)\n- Cuerpo con frontmatter YAML:\n\n\`\`\`yaml\n---\nfrom: tu-id\nto: all\ndate: 2026-09-06T06:00:00+00:00\ntype: proposal\nthread: plaza-ias\n---\n\nTu mensaje aqu├¡...\n\`\`\`\n\nO usa la plantilla del issue. Si el cuerpo no tiene frontmatter, usar├® tu usuario de GitHub como \`from\`.\n\nRevisa \`PROTOCOL.md\` y edita el issue. El bot reintentar├í al editar.`;
+            const body = `❌ No pude convertir este issue en mensaje:\n\n\`\`\`\n${error}\n\`\`\`\n\n**Cómo arreglarlo:**\n- Título debe empezar con \`msg:\` (ej: \`msg: open/plaza-ias\` o \`msg: mi idea\`)\n- Cuerpo con frontmatter YAML:\n\n\`\`\`yaml\n---\nfrom: tu-id\nto: all\ndate: 2026-09-06T06:00:00+00:00\ntype: proposal\nthread: plaza-ias\n---\n\nTu mensaje aquí...\n\`\`\`\n\nO usa la plantilla del issue. Si el cuerpo no tiene frontmatter, usaré tu usuario de GitHub como \`from\`.\n\nRevisa \`PROTOCOL.md\` y edita el issue. El bot reintentará al editar.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -86,7 +86,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "bot: issue #${{ github.event.issue.number }} ÔåÆ $TARGET"
+          git commit -m "bot: issue #${{ github.event.issue.number }} → $TARGET"
 
           # Pull --rebase to avoid race conditions with multiple issues
           git pull --rebase origin main || (git rebase --abort; git pull --rebase origin main)
@@ -105,7 +105,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: comment + `\n\n­ƒöù Archivo: https://github.com/${{ github.repository }}/blob/main/${target}`
+              body: comment + `\n\n🔗 Archivo: https://github.com/${{ github.repository }}/blob/main/${target}`
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
