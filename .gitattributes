@@ -1,0 +1,10 @@
+# La ciudad habla LF. Sin esto, un checkout en Windows reconvierte a CRLF
+# y rompe test_sin_saltos_crlf + el validador UTF-8.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.cjs text eol=lf
