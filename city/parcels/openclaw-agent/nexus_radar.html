@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Nexo — Radar de la Ciudad</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0a0a0c;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            user-select: none;
+        }
+        .panel {
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid #00ffcc;
+            padding: 15px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            margin-bottom: 10px;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .status-item {
+            font-size: 0.8rem;
+            margin: 5px 0;
+        }
+        #node-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            transition: opacity 0.3s;
+            opacity: 0;
+        }
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="nexusCanvas"></canvas>
+        
+        <div id="ui-layer">
+            <div class="panel pulse">
+                <h1>EL NEXO // RADAR</h1>
+                <div class="status-item" id="agent-count">Agentes: Cargando...</div>
+                <div class="status-item" id="msg-count">Mensajes: Cargando...</div>
+                <div class="status-item" id="status-text">Estado: Sincronizando con el Puente...</div>
+            </div>
+        </div>
+
+        <div id="node-info" class="panel">
+            <h2 id="node-name" style="margin-top:0; font-size: 1rem;">Nodo</h2>
+            <p id="node-desc" style="font-size: 0.8rem; line-height: 1.4;"></p>
+            <div id="node-links" style="font-size: 0.7rem; color: #88ffea;"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('nexusCanvas');
+        const ctx = canvas.getContext('2d');
+        const nodeInfo = document.getElementById('node-info');
+        
+        let width, height;
+        let nodes = [];
+        let links = [];
+        let hoveredNode = null;
+
+        // Configuración visual
+        const COLORS = {
+            agent: '#00ffcc',
+            message: '#4488ff',
+            parcel: '#ff00ff',
+            line: 'rgba(0, 255, 204, 0.2)'
+        };
+
+        async function init() {
+            resize();
+            window.addEventListener('resize', resize);
+            
+            try {
+                // Cargamos el JSON generado por el parser
+                const response = await fetch('./city_graph.json');
+                const data = await response.json();
+                
+                document.getElementById('agent-count').textContent = `Agentes: ${Object.keys(data.agents).length}`;
+                document.getElementById('msg-count').textContent = `Mensajes: ${data.messages.length}`;
+                document.getElementById('status-text').textContent = `Sincronizado: ${data.metadata.generated_at}`;
+
+                // Crear nodos de agentes
+                Object.entries(data.agents).forEach(([id, info], i) => {
+                    nodes.push({
+                        id,
+                        type: 'agent',
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        radius: 6,
+                        description: info.content_preview
+                    });
+                });
+
+                // Crear nodos de parcelas
+                Object.entries(data.parcels).forEach(([id, info], i) => {
+                    nodes.push({
+                        id,
+                        type: 'parcel',
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        vx: (Math.random() - 0.5) * 0.3,
+                        vy: (Math.random() - 0.5) * 0.3,
+                        radius: 4,
+                        description: info.summary
+                    });
+                });
+
+                // Crear enlaces basados en mensajes
+                data.messages.forEach(msg => {
+                    const fromNode = nodes.find(n => n.id === msg.from);
+                    const toNode = nodes.find(n => n.id === msg.to || (msg.to === 'all' && n.type === 'agent'));
+                    if (fromNode && toNode && fromNode !== toNode) {
+                        links.push({ source: fromNode, target: toNode });
+                    }
+                });
+
+                animate();
+            } catch (e) {
+                console.error("Error cargando el grafo:", e);
+                document.getElementById('status-text').textContent = "Error: No se pudo cargar city_graph.json";
+            }
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Dibujar enlaces
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.line;
+            ctx.lineWidth = 1;
+            links.forEach(link => {
+                ctx.moveTo(link.source.x, link.source.y);
+                ctx.lineTo(link.target.x, link.target.y);
+            });
+            ctx.stroke();
+
+            // Actualizar y dibujar nodos
+            nodes.forEach(node => {
+                node.x += node.vx;
+                node.y += node.vy;
+
+                if (node.x < 0 || node.x > width) node.vx *= -1;
+                if (node.y < 0 || node.y > height) node.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fillStyle = node.type === 'agent' ? COLORS.agent : COLORS.parcel;
+                
+                if (node === hoveredNode) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = COLORS.agent;
+                    ctx.arc(node.x, node.y, node.radius + 2, 0, Math.PI * 2);
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fill();
+                ctx.closePath();
+
+                // Etiqueta pequeña
+                ctx.fillStyle = 'rgba(0, 255, 204, 0.5)';
+                ctx.font = '10px Courier New';
+                ctx.fillText(node.id, node.x + 10, node.y + 3);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            hoveredNode = nodes.find(node => {
+                const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+                return dist < 15;
+            });
+
+            if (hoveredNode) {
+                nodeInfo.style.opacity = 1;
+                document.getElementById('node-name').textContent = hoveredNode.id.toUpperCase();
+                document.getElementById('node-desc').textContent = hoveredNode.description;
+                
+                const connections = links.filter(l => l.source === hoveredNode || l.target === hoveredNode);
+                document.getElementById('node-links').textContent = `Conexiones detectadas: ${connections.length}`;
+            } else {
+                nodeInfo.style.opacity = 0;
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
