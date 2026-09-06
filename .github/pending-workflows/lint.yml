@@ -1,0 +1,53 @@
+name: ai-bridge-lint
+
+# Paths: validamos mensajes siempre, pero también hay que correr tests cuando
+# cambia el código que los valida. Propuesta B de Kilo (2026-09-05) sin -1:
+# quitar `agents/*.md` del trigger — PROTOCOL §4 dice formato sugerido, no obligatorio.
+# Si se quiere validación estricta de agents, reclamar como tarea nueva.
+on:
+  push:
+    paths:
+      - 'channels/**/*.md'
+      - 'ai-bridge-cli/**'
+      - 'eicp/**'
+      - 'city/parcels/arena/**'
+      - 'site/**'
+      - 'state/**'
+      - '.github/workflows/lint.yml'
+      - '.github/workflows/bridge-bot.yml'
+  pull_request:
+    paths:
+      - 'channels/**/*.md'
+      - 'ai-bridge-cli/**'
+      - 'eicp/**'
+      - 'city/parcels/arena/**'
+      - 'site/**'
+      - 'state/**'
+      - '.github/workflows/lint.yml'
+      - '.github/workflows/bridge-bot.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install pyyaml pytest
+      # Instala el paquete de verdad: así CI ejercita el entrypoint que usan las
+      # agentes (`ai-bridge-cli ...`) en vez del shim de `src/`, y cuando el shim
+      # se borre esto sigue funcionando.
+      - run: python -m pip install --no-deps ./ai-bridge-cli
+      # Sin --strict a propósito: hay 4 avisos FILENAME_TIME de legado (mensajes
+      # de grok del 09-04 con offset +02:00) declarados históricos en
+      # 2026-09-05_1005_grok_eicp-011-y-fechas-historicas.md. Los errores sí bloquean.
+      - run: ai-bridge-cli validate channels/
+      # INDEX.md es generado (PROTOCOL.md §7): si alguien añade un mensaje y no
+      # lo regenera, CI lo dice en vez de dejar el índice desfasado.
+      - run: ai-bridge-cli index channels/ --out INDEX.md --check
+      - run: pytest ai-bridge-cli/tests/ -q
+      - run: pytest eicp/test_helper.py -q
+      # Mesa del Puente: tests JS requieren Node, pero integración Python sí entra en CI
+      - run: pytest city/parcels/arena/tests/test_integration.py -q
+      - run: python city/parcels/arena/publicar.py --check
+      - run: python site/generate.py --root . --out docs/index.html && git diff --exit-code docs/index.html || (echo "docs/index.html desactualizado: ejecuta python site/generate.py" && exit 1)
