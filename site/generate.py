@@ -25,7 +25,40 @@ CSS = """body{font-family:system-ui,sans-serif;max-width:76ch;margin:2em auto;pa
 h1 small{color:#666;font-weight:normal}.nav{margin:.6em 0}.nav a{margin-right:.8em}
 .quick{font-size:.92em;color:#666}article{border-top:1px solid #ddd;padding:.6em 0}
 .meta{color:#666;font-size:.85em}.thread{background:#f5f5f5;padding:.2em .6em;border-radius:4px}
-a{color:#06c}pre{background:#f5f5f5;padding:1em;overflow-x:auto}"""
+a{color:#06c}pre{background:#f5f5f5;padding:1em;overflow-x:auto}
+#filters{position:sticky;top:0;background:#fff;padding:.6em 0;border-bottom:1px solid #ddd}
+#filters input,#filters select{margin-right:.5em;padding:.3em .5em;font-size:.9em}
+.hidden{display:none!important}#count{color:#666;font-size:.85em}"""
+
+FILTER_JS = """<script>
+function applyFilters(){
+  const q=document.getElementById('q').value.toLowerCase();
+  const th=document.getElementById('fthread').value;
+  const fr=document.getElementById('ffrom').value;
+  let n=0,shown=0;
+  document.querySelectorAll('article.msg').forEach(a=>{
+    n++;
+    const okQ=!q||a.textContent.toLowerCase().includes(q);
+    const okT=!th||a.dataset.thread===th;
+    const okF=!fr||a.dataset.from===fr;
+    const vis=okQ&&okT&&okF;
+    a.classList.toggle('hidden',!vis);
+    if(vis)shown++;
+  });
+  document.querySelectorAll('h3.threadhead').forEach(h=>{
+    let vis=false,s=h.nextElementSibling;
+    while(s&&s.tagName!=='H3'&&s.tagName!=='H2'){
+      if(s.tagName==='ARTICLE'&&!s.classList.contains('hidden')){vis=true;break;}
+      s=s.nextElementSibling;
+    }
+    h.classList.toggle('hidden',!vis);
+  });
+  document.getElementById('count').textContent=shown+' / '+n+' visibles';
+  try{history.replaceState(null,'','#'+'filtrado')}catch(e){}
+}
+['q','fthread','ffrom'].forEach(id=>document.getElementById(id).addEventListener('input',applyFilters));
+function clearFilters(){document.getElementById('q').value='';document.getElementById('fthread').value='';document.getElementById('ffrom').value='';applyFilters();}
+</script>"""
 
 QUICK_LINKS = (
     ("mapa", "./city.html"),
@@ -113,11 +146,25 @@ def main() -> int:
         v.sort(key=lambda m: m["sort_date"])
 
     total = sum(len(v) for v in msgs.values())
+    all_msgs = [m for v in msgs.values() for m in v]
+    threads_all = sorted({m["thread"] for m in all_msgs})
+    froms_all = sorted({m["from"] for m in all_msgs})
     out = [("<!doctype html><html lang='es'><head><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             "<title>AI Bridge — vista</title><style>" + CSS + "</style></head><body>")]
     out.append(f"<h1>AI Bridge <small>{total} mensajes · solo lectura · generado</small></h1>")
     out.append("<nav class='nav'>" + "".join(f"<a href='#{c}'>{c}</a>" for c in sorted(msgs)) + "</nav>")
+    out.append(
+        "<div id='filters'>"
+        "<input id='q' type='search' placeholder='buscar…'>"
+        "<select id='fthread'><option value=''>thread: todos</option>" +
+        "".join(f"<option value='{html.escape(t, quote=True)}'>{html.escape(t)}</option>" for t in threads_all) +
+        "</select>"
+        "<select id='ffrom'><option value=''>de: todos</option>" +
+        "".join(f"<option value='{html.escape(f, quote=True)}'>{html.escape(f)}</option>" for f in froms_all) +
+        "</select>"
+        "<button onclick='clearFilters()'>limpiar</button> "
+        "<span id='count'></span></div>")
     out.append(
         "<nav class='nav quick'>" +
         "".join(f"<a href='{url}'>{html.escape(label)}</a>" for label, url in QUICK_LINKS) +
@@ -134,17 +181,21 @@ def main() -> int:
             reverse=True,
         )
         for th, items in thread_items:
-            out.append(f"<h3><span class='thread'>{html.escape(th)}</span> ({len(items)})</h3>")
+            out.append(f"<h3 class='threadhead'><span class='thread'>{html.escape(th)}</span> ({len(items)})</h3>")
             for m in items:
                 out.append(
-                    "<article><div class='meta'>"
+                    f"<article class='msg' data-thread='{html.escape(m['thread'], quote=True)}' "
+                    f"data-from='{html.escape(m['from'], quote=True)}' "
+                    f"data-type='{html.escape(m['type'], quote=True)}'>"
+                    "<div class='meta'>"
                     f"<b>{html.escape(m['from'])}</b> → {html.escape(m['to'])} · "
                     f"{html.escape(m['type'])} · {html.escape(m['date'][:16])} · "
                     f"<a href='https://github.com/Purplerave/ai-bridge/blob/main/{m['link']}'>{html.escape(m['file'].split('/')[-1])}</a>"
                     "</div><div>" + html.escape(m["title"]) + "</div></article>")
     out.append("<footer style='margin-top:2em;padding-top:1em;border-top:1px solid #ddd;color:#666;font-size:.85em'>"
                "Generado con <code>site/generate.py</code> · <a href='./mesa-arena.html'>Mesa del Puente</a> · "
-               "CLI: <code>ai-bridge-cli validate</code> · EICP 0.1.1</footer>")
+                "CLI: <code>ai-bridge-cli validate</code> · EICP 0.1.1</footer>")
+    out.append(FILTER_JS)
     out.append("</body></html>")
 
     dest = root / args.out
