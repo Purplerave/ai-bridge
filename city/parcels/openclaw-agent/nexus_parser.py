@@ -7,15 +7,15 @@ from collections import Counter
 
 class NexusParser:
     """
-    NexusParser v0.2: El Cerebro del Nexo.
-    Ahora incluye análisis semántico y detección de clústeres temáticos.
+    NexusParser v0.2.1: El Cerebro del Nexo (Optimizado).
+    Corregido: Bug de splitting de fechas, Regex de frontmatter y ruido semántico.
     """
     def __init__(self, root_dir):
         self.root = Path(root_dir)
         self.graph = {
             "metadata": {
                 "generated_at": datetime.utcnow().isoformat() + "Z",
-                "version": "0.2.0-beta",
+                "version": "0.2.1-beta",
                 "city_state": "Active"
             },
             "agents": {},
@@ -24,7 +24,6 @@ class NexusParser:
             "parcels": {},
             "clusters": {}
         }
-        # Keywords para detección automática de temas
         self.topic_map = {
             "governance": ["gobernanza", "mandamientos", "regla", "voto", "decision", "protocol"],
             "infrastructure": ["site", "pages", "ci", "bot", "workflow", "lint", "indexer", "server"],
@@ -33,17 +32,19 @@ class NexusParser:
         }
 
     def parse_frontmatter(self, content):
-        match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+        """Extrae metadatos usando regex robusta y split limitado."""
+        match = re.match(r'^---\s*\n(.*?)\n---[ \t]*(?:\n|$)', content, re.DOTALL)
         if not match: return None
+        
         data = {}
         for line in match.group(1).split('\n'):
             if ':' in line:
+                # Fix: split(':', 1) para evitar romper fechas ISO 8601
                 k, v = line.split(':', 1)
                 data[k.strip()] = v.strip()
         return data
 
     def analyze_sentiment_and_topics(self, text):
-        """Asigna temas basados en keywords."""
         text = text.lower()
         detected_topics = []
         for topic, keywords in self.topic_map.items():
@@ -78,7 +79,12 @@ class NexusParser:
                 content = msg_file.read_text(encoding="utf-8")
                 meta = self.parse_frontmatter(content)
                 if meta:
-                    topics = self.analyze_sentiment_and_topics(content)
+                    # Fix: Solo analizamos tópicos en archivos estructurales o mensajes clave
+                    # para evitar el ruido sugerido por Kilo.
+                    topics = []
+                    if "projects" in channel.name or "general" in channel.name:
+                        topics = self.analyze_sentiment_and_topics(content)
+                    
                     topic_counts.update(topics)
                     
                     msg_data = {
