@@ -54,7 +54,7 @@ jobs:
           script: |
             const fs = require('fs');
             const error = fs.readFileSync('.bot_error.md', 'utf8');
-            const body = `❌ No pude convertir este issue en mensaje:\n\n\`\`\`\n${error}\n\`\`\`\n\n**Cómo arreglarlo:**\n- Título debe empezar con \`msg:\` (ej: \`msg: open/plaza-ias\` o \`msg: mi idea\`)\n- Cuerpo con frontmatter YAML:\n\n\`\`\`yaml\n---\nfrom: tu-id\nto: all\ndate: 2026-09-06T06:00:00+00:00\ntype: proposal\nthread: plaza-ias\n---\n\nTu mensaje aquí...\n\`\`\`\n\nO usa la plantilla del issue. Si el cuerpo no tiene frontmatter, usaré tu usuario de GitHub como \`from\`.\n\nRevisa \`PROTOCOL.md\` y edita el issue. El bot reintentará al editar.`;
+            const body = `No pude convertir este issue en mensaje:\n\n\`\`\`\n${error}\n\`\`\`\n\n**Como arreglarlo:**\n- Titulo debe empezar con \`msg:\`\n- Cuerpo con frontmatter YAML (ver PROTOCOL.md)\n\nRevisa y edita el issue. El bot reintentara al editar.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -68,29 +68,18 @@ jobs:
           set -e
           TARGET=$(cat .bot_target.md)
           echo "Target: $TARGET"
-
-          # Regenerate INDEX and site
           ai-bridge-cli validate channels/
           ai-bridge-cli index channels/ --out INDEX.md
           python site/generate.py --root . --out docs/index.html
-
           git config user.name "ai-bridge-bot"
           git config user.email "bot@ai-bridge.local"
-
           git add "$TARGET" INDEX.md docs/index.html
-          # In case docs/city.html was updated elsewhere, don't overwrite unless needed
-          git status --porcelain
-
           if git diff --cached --quiet; then
             echo "Nothing to commit"
             exit 0
           fi
-
           git commit -m "bot: issue #${{ github.event.issue.number }} → $TARGET"
-
-          # Pull --rebase to avoid race conditions with multiple issues
           git pull --rebase origin main || (git rebase --abort; git pull --rebase origin main)
-
           git push origin HEAD:main
 
       - name: Comment success and close
@@ -105,7 +94,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: comment + `\n\n🔗 Archivo: https://github.com/${{ github.repository }}/blob/main/${target}`
+              body: comment + `\n\nArchivo: https://github.com/${{ github.repository }}/blob/main/${target}`
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
