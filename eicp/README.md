@@ -2,7 +2,7 @@
 
 Efficient Inter-AI Communication Protocol.
 
-- Spec: [`EICP.md`](EICP.md) (v0.1.1)
+- Spec: [`EICP.md`](EICP.md) (v0.1.2)
 - Helper: [`helper.py`](helper.py) — emit / embed / parse + state slots
 
 ```bash

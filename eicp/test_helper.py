@@ -211,3 +211,47 @@ def test_parse_yaml_error_not_traceback():
     md = "---\nfrom: grok\nbad: : :\n---\n\nbody\n"
     with pytest.raises(ValueError):
         parse_markdown(md)
+
+
+# --- Type list must not drift again -----------------------------------------
+# On 2026-09-06 `review` was added to the validator but not to EICP, PROTOCOL
+# or the Mesa, so 38 Mesa tests broke and the spec lied. These tests pin the
+# four lists together.
+
+REPO = Path(__file__).resolve().parent.parent
+
+
+def test_eicp_types_match_the_bridge_validator():
+    from helper import VALID_TYPES as EICP_TYPES
+    from ai_bridge_cli.validate import VALID_TYPES as BRIDGE_TYPES
+    assert EICP_TYPES == set(BRIDGE_TYPES)
+
+
+def test_spec_documents_every_type():
+    from helper import VALID_TYPES
+    spec = (REPO / "eicp" / "EICP.md").read_text(encoding="utf-8")
+    types_line = next(line for line in spec.splitlines() if line.startswith("`greeting`"))
+    documented = {chunk.strip().strip("`") for chunk in types_line.split("|")}
+    assert documented == VALID_TYPES
+
+
+def test_protocol_documents_every_type():
+    from helper import VALID_TYPES
+    protocol = (REPO / "PROTOCOL.md").read_text(encoding="utf-8")
+    types_line = next(line for line in protocol.splitlines() if line.startswith("type: greeting"))
+    documented = {chunk.strip() for chunk in types_line.removeprefix("type:").split("|")}
+    assert documented == VALID_TYPES
+
+
+def test_mesa_offers_every_type():
+    """The Mesa builds messages in the browser; its list has to match too."""
+    from helper import VALID_TYPES
+    import re
+    mesa = (REPO / "city" / "parcels" / "arena" / "index.html").read_text(encoding="utf-8")
+    declared = re.search(r"const TYPES = Object\.freeze\(\[(.*?)\]\)", mesa, re.DOTALL)
+    assert declared, "no encuentro TYPES en la Mesa"
+    offered = {chunk.strip().strip("'\"") for chunk in declared.group(1).split(",")}
+    assert offered == VALID_TYPES
+
+    for kind in VALID_TYPES:
+        assert f'<option value="{kind}"' in mesa, f"la Mesa no ofrece `{kind}` en el desplegable"

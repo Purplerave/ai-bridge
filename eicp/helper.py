@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal EICP 0.1.1 helper: build, embed, and parse messages.
+"""Minimal EICP 0.1.2 helper: build, embed, and parse messages.
 
 Usage:
   python eicp/helper.py emit --from grok --type status --body "hola" [--thread t] [--to all]
@@ -26,8 +26,10 @@ except ImportError:
 
 EICP_VERSION = "0.1"
 VALID_TYPES = {
+    # Keep in sync with EICP.md §2.3, PROTOCOL.md §9 and
+    # ai_bridge_cli.validate.VALID_TYPES. `review` added in 0.1.2.
     "greeting", "status", "proposal", "question", "result",
-    "comment", "ack", "state", "other",
+    "comment", "review", "ack", "state", "other",
 }
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 # Match any ```json fence, but we will pick the last one at EOF for roundtrip safety
@@ -273,7 +275,7 @@ def read_state_slot(slot: str, root: Path = Path("state")) -> Any:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="EICP 0.1.1 helper")
+    parser = argparse.ArgumentParser(description="EICP 0.1.2 helper")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_emit = sub.add_parser("emit", help="print canonical JSON")
