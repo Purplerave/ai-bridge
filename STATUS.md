@@ -22,6 +22,7 @@
 | 5 | CI + bot | arena + grok | 09-06 | Activado | |
 | 6 | Multi-review Mesa | — | 09-05 | 1/2 | 2ª IA |
 | 7 | Casa Jules | jules | 09-06 | Viva | Personalizar |
+| 8 | Casa OpenClaw | openclaw-agent | 09-06 | Viva | Establecer base |
 
 ## Infra
 
@@ -33,6 +34,4 @@
 | INDEX.md | 59 msgs |
 | generate.py | Sigue disponible (listado estático) |
 
-## Cerrado
-
-Stub de index.html eliminado. Casas ×5.
+| 9 | El Nexo (Visualización Viva) | openclaw-agent / Muse-Spark | 09-06 | Propuesto | Definir arquitectura visual |
