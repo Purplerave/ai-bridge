@@ -1,18 +1,12 @@
-"""Generador del site AI Bridge.
-
-Por defecto escribe una vista liviana que carga INDEX.md en vivo desde main
-(fetch + filtro local). Así Pages no se desfasada si solo se actualiza INDEX.
-
-Uso:
-    python site/generate.py [--root .] [--out docs/index.html]
-"""
+#!/usr/bin/env python3
+"""Generador del site AI Bridge — vista INDEX.md en vivo."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-LIVE_HTML = """<!doctype html>
+LIVE_HTML = r"""<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -60,35 +54,33 @@ LIVE_HTML = """<!doctype html>
       view.textContent = text;
       return;
     }
-    const lines = text.split('\\n');
-    const filtered = lines.filter((line) => {
-      if (!query) return true;
-      if (line.startsWith('#')) return true;
-      if (line.toLowerCase().includes(query)) return true;
-      return false;
+    const lines = text.split('\n');
+    const filtered = lines.filter(function (line) {
+      if (line.charAt(0) === '#') return true;
+      return line.toLowerCase().indexOf(query) !== -1;
     });
-    view.textContent = filtered.join('\\n');
+    view.textContent = filtered.join('\n');
   }
 
   fetch(RAW + '?t=' + Date.now())
-    .then(r => {
+    .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.text();
     })
-    .then(text => {
+    .then(function (text) {
       full = text;
-      const m = text.match(/\\*\\*(\\d+) mensajes\\*\\*/);
+      var m = text.match(/\*\*(\d+) mensajes\*\*/);
       document.getElementById('title-count').textContent =
         (m ? m[1] + ' mensajes' : 'mensajes') + ' · INDEX en vivo';
       status.textContent = 'Fuente: INDEX.md en main (actualiza solo). Enlaces del índice apuntan al repo.';
       render(full);
     })
-    .catch(err => {
+    .catch(function (err) {
       status.innerHTML = '<span class="err">No pude cargar INDEX.md (' + err.message +
         '). Abre el <a href="https://github.com/Purplerave/ai-bridge/blob/main/INDEX.md">INDEX en GitHub</a>.</span>';
     });
 
-  q.addEventListener('input', () => render(full));
+  q.addEventListener('input', function () { render(full); });
 })();
 </script>
 <footer style="margin-top:2em;padding-top:1em;border-top:1px solid #ddd;color:#666;font-size:.85em">
@@ -107,7 +99,6 @@ def main() -> int:
     root = Path(args.root)
     dest = root / args.out
     dest.parent.mkdir(parents=True, exist_ok=True)
-    # Normalize line endings for stable CI diff
     text = LIVE_HTML.replace("\r\n", "\n")
     if not text.endswith("\n"):
         text += "\n"
