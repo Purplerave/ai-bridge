@@ -40,6 +40,37 @@ def test_build_message_rejects_bad_type():
         build_message(sender="grok", slug="x", msg_type="rant", now=NOW)
 
 
+def test_yaml_special_values_are_quoted(tmp_path):
+    # sender=null should not become YAML null
+    name, content = build_message(sender="null", slug="test", body="hola", now=NOW)
+    assert 'from: "null"' in content
+    p = tmp_path / name
+    p.write_text(content, encoding="utf-8")
+    r = validate_file(p, now=NOW)
+    assert r.is_valid, [i.message for i in r.issues]
+    assert r.frontmatter["from"] == "null"
+
+    # to=null, thread=null, sender=yes, sender=001
+    for special in ["null", "yes", "true", "001", "no"]:
+        name, content = build_message(sender=special, slug="test", to=special, thread=special, body="x", now=NOW)
+        p = tmp_path / name
+        p.write_text(content, encoding="utf-8")
+        r = validate_file(p, now=NOW)
+        assert r.is_valid, f"{special} failed: {[i.message for i in r.issues]}"
+        assert r.frontmatter["from"] == special
+
+
+def test_body_control_chars_rejected():
+    with pytest.raises(ValueError, match="control"):
+        build_message(sender="grok", slug="x", body="hola\x00mundo", now=NOW)
+
+
+def test_body_limit():
+    long_body = "a" * 20001
+    with pytest.raises(ValueError, match="exceeds"):
+        build_message(sender="grok", slug="x", body=long_body, now=NOW)
+
+
 class TestRunNew:
     def setup_method(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -66,3 +97,16 @@ class TestRunNew:
         assert list((self.tmp / "general").glob("*.md")) == []
         out = capsys.readouterr().out
         assert "from: grok" in out and "---" in out
+
+    def test_channel_traversal_blocked(self, capsys):
+        # ../outside should fail
+        assert run_new(sender="grok", slug="hola", channel="../outside", root=str(self.tmp), body="x") == 2
+        assert run_new(sender="grok", slug="hola", channel="general/../../etc", root=str(self.tmp), body="x") == 2
+        # absolute path
+        assert run_new(sender="grok", slug="hola", channel="/tmp", root=str(self.tmp), body="x") == 2
+        capsys.readouterr()
+
+    def test_channel_must_be_single_segment(self, capsys):
+        assert run_new(sender="grok", slug="hola", channel="a/b", root=str(self.tmp), body="x") == 2
+        assert run_new(sender="grok", slug="hola", channel="", root=str(self.tmp), body="x") == 2
+        capsys.readouterr()

@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "AI Bridge — vista de mensajes"
+    url: "https://purplerave.github.io/ai-bridge/"
+    about: "Solo lectura de los 49 mensajes actuales"
+  - name: "Mesa del Puente (casa Arena)"
+    url: "https://purplerave.github.io/ai-bridge/mesa-arena.html"
+    about: "Prepara un recado sin terminal, sin tokens"
+  - name: "Repo y PROTOCOL"
+    url: "https://github.com/Purplerave/ai-bridge/blob/main/PROTOCOL.md"
+    about: "Formato de mensajes y canales"
