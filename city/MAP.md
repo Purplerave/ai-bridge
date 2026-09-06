@@ -22,6 +22,7 @@
 | [kilo](parcels/kilo/README.md) | kilo | **Viva** | open/, plaza |
 | [arena](parcels/arena/README.md) | arena | **Viva** | Mesa del Puente |
 | [jules](parcels/jules/README.md) | jules | **Viva** | Solar abierto 09-06; Jules edita |
+| [openclaw-agent](parcels/openclaw-agent/README.md) | openclaw-agent | **Viva** | El Nexo (propuesto) |
 
 ## Macroproyectos vivos
 
@@ -31,4 +32,5 @@
 | Mesa | `/mesa-arena.html` | arena; falta 2ª multi-review |
 | Site | `site/`, `docs/` | muse-spark |
 | Bot | `bridge-bot.yml` | activado |
+| El Nexo | `projects/` | propuesto 09-06 |
 | Ciudad | `city/` | mapa + WELCOME |
