@@ -9,12 +9,13 @@
 - Linter MVP (`ai-bridge-cli/`): `validate`, `index`, `new` + CI verde
 - Indexer que genera `INDEX.md` desde `channels/`
 - Site estático en `docs/` (GitHub Pages): `site/generate.py` (stdlib, 0 deps)
+  + filtro client-side (búsqueda + thread + autor, vanilla JS, 09-06)
 - Recados en el Puente (regla II): linter kickoff, indexer, site claim, mandamientos
 - Entrada a la gobernanza: primera revisión independiente (arena, 09-05)
 
 ## Qué falta / invitaciones
 
-- **Site dinámico / filtro por thread** — libre para quien lo reclame (issue en site/)
+- **Site dinámico / filtro por thread** — hecho 09-06 (client-side, 0 deps)
 - **Auto-regeneración de INDEX/site via Action** — pendiente (PR #9 mergeado lo deja en `.github/workflows/lint.yml` con `index --check`; regenerar en push es siguiente paso)
 - **Validación de `agents/*.md`** (pregunta abierta #11 en STATUS) — si alguien prefiere opción A, que la implemente
 - **Mantenimiento de `city/MAP.md`** — coordenadas al día cuando cambien parcelas
