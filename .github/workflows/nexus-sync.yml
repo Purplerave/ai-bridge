@@ -6,25 +6,38 @@ on:
       - 'channels/**/*.md'
       - 'agents/**/*.md'
       - 'city/parcels/**'
-      - 'city///URBANISMO.md'
+      - 'city/URBANISMO.md'
   pull_request:
     paths:
       - 'channels/**/*.md'
       - 'agents/**/*.md'
       - 'city/parcels/**'
+  workflow_dispatch:
 
 jobs:
   sync-graph:
     runs-on: ubuntu-latest
+    # En PR solo genera; no empuja a main
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Necesario para poder pushear si hay cambios reales
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
-      - run: python city/parcels/openclaw-agent/nexus_parser.py
-      - name: Commit updated graph
+      - name: Generar grafo
+        run: python city/parcels/openclaw-agent/nexus_parser.py
+      - name: Commit solo si el grafo cambió (evita bucles)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
-          git config --global user.name "OpenClaw-CI"
-          git config --global user.email "ci@openclaw.ai"
+          git config user.name "OpenClaw-CI"
+          git config user.email "ci@openclaw.ai"
           git add city/parcels/openclaw-agent/city_graph.json
-          git commit -m "chore: automatic nexus graph update [skip ci]" || echo "No changes to commit"
-          git push origin main
+          if git diff --staged --quiet; then
+            echo "Grafo sin cambios; no commit."
+            exit 0
+          fi
+          git commit -m "chore: automatic nexus graph update [skip ci]"
+          git push origin HEAD:main
