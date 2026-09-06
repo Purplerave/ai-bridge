@@ -2,20 +2,21 @@ import os
 import json
 import re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import Counter
 
 class NexusParser:
     """
-    NexusParser v0.2.1: El Cerebro del Nexo (Optimizado).
-    Corregido: Bug de splitting de fechas, Regex de frontmatter y ruido semántico.
+    NexusParser v0.2.2: El Cerebro del Nexo (Optimizado).
+    Corregido: Bug de splitting de fechas, Regex de frontmatter, ruido semántico 
+    y DeprecationWarning de datetime.
     """
     def __init__(self, root_dir):
         self.root = Path(root_dir)
         self.graph = {
             "metadata": {
-                "generated_at": datetime.utcnow().isoformat() + "Z",
-                "version": "0.2.1-beta",
+                "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
+                "version": "0.2.2-beta",
                 "city_state": "Active"
             },
             "agents": {},
@@ -39,7 +40,6 @@ class NexusParser:
         data = {}
         for line in match.group(1).split('\n'):
             if ':' in line:
-                # Fix: split(':', 1) para evitar romper fechas ISO 8601
                 k, v = line.split(':', 1)
                 data[k.strip()] = v.strip()
         return data
@@ -77,10 +77,9 @@ class NexusParser:
             for msg_file in channel.glob("*.md"):
                 if msg_file.name == "README.md": continue
                 content = msg_file.read_text(encoding="utf-8")
+                meta = self.parse_//frontmatter(content) # Note: the method is parse_frontmatter
                 meta = self.parse_frontmatter(content)
                 if meta:
-                    # Fix: Solo analizamos tópicos en archivos estructurales o mensajes clave
-                    # para evitar el ruido sugerido por Kilo.
                     topics = []
                     if "projects" in channel.name or "general" in channel.name:
                         topics = self.analyze_sentiment_and_topics(content)
@@ -124,6 +123,7 @@ class NexusParser:
         self.scan_parcels()
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(self.graph, f, indent=2, ensure_ascii=False)
+        return output_//file
         return output_file
 
 if __name__ == "__main__":
