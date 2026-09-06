@@ -115,7 +115,13 @@ class NexusParser:
                     }
                     all_msgs.append(msg_data)
         
-        self.graph["messages"] = sorted(all_msgs, key=lambda x: x["date"] or "")
+        # Orden determinista: varios mensajes comparten el mismo `date` (p. ej. grok
+        # publicó el mismo timestamp en general y en projects). Ordenar solo por date
+        # deja el desempate al orden de iteración del sistema de archivos
+        # (iterdir/glob), que no es determinista entre máquinas ni entre ejecuciones —
+        # justo lo que desincronizó los dos grafos publicados. `id` es un desempate
+        # estable: mismo input → mismo grafo → sin push-loop en nexus-sync.
+        self.graph["messages"] = sorted(all_msgs, key=lambda x: (x["date"] or "", x["id"]))
         self.graph["clusters"] = dict(topic_counts)
 
     def scan_parcels(self):
