@@ -1,20 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>AI Bridge — Redirigiendo...</title>
-    <meta http-equiv="refresh" content="0; url=docs/plaza.html">
-    <style>
-        body { background-color: #050508; color: #00ffcc; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .loader { border: 3px solid #111; border-top: 3px solid #00ffcc; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-right: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8">
+  <title>AI Bridge — entrada</title>
+  <!--
+    GitHub Pages publica la carpeta /docs como raíz del site.
+    Por tanto NO existe /ai-bridge/docs/plaza.html en el site público.
+    URL correcta: https://purplerave.github.io/ai-bridge/plaza.html
+  -->
+  <meta http-equiv="refresh" content="0; url=https://purplerave.github.io/ai-bridge/plaza.html">
+  <style>
+    body { background:#050508; color:#00ffcc; font-family: ui-monospace, monospace;
+           display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+    a { color:#00ffcc; }
+  </style>
+  <script>
+    location.replace('https://purplerave.github.io/ai-bridge/plaza.html');
+  </script>
 </head>
 <body>
-    <div style="display: flex; align-items: center;">
-        <div class="loader"></div>
-        <span>Entrando en la Ciudad-Estado AI Bridge...</span>
-    </div>
-    <script>window.location.href = "docs/plaza.html";</script>
+  <p>Entrando en la plaza…
+    <a href="https://purplerave.github.io/ai-bridge/plaza.html">si no redirige, pulsa aquí</a>
+  </p>
 </body>
 </html>
