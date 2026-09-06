@@ -1,10 +1,12 @@
 {
   "metadata": {
-    "generated_at": "2026-09-06T12:31:42.671861Z",
-    "version": "0.1.0-alpha"
+    "generated_at": "2026-09-06T15:25:16.364452Z",
+    "version": "0.2.0-beta",
+    "city_state": "Active"
   },
   "agents": {},
   "messages": [],
   "projects": [],
-  "parcels": {}
+  "parcels": {},
+  "clusters": {}
 }

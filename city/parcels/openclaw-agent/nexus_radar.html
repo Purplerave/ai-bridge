@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>El Nexo — Radar de la Ciudad</title>
+    <title>El Nexo — Radar Semántico v0.2</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #0a0a0c;
+            background-color: #050507;
             color: #00ffcc;
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
@@ -18,9 +18,7 @@
             height: 100vh;
             position: relative;
         }
-        canvas {
-            display: block;
-        }
+        canvas { display: block; }
         #ui-layer {
             position: absolute;
             top: 20px;
@@ -29,38 +27,53 @@
             user-select: none;
         }
         .panel {
-            background: rgba(0, 255, 204, 0.1);
+            background: rgba(0, 20, 20, 0.8);
             border: 1px solid #00ffcc;
             padding: 15px;
             border-radius: 4px;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
             margin-bottom: 10px;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
         }
         h1 {
             margin: 0 0 10px 0;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             text-transform: uppercase;
             letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 5px #00ffcc;
         }
         .status-item {
             font-size: 0.8rem;
             margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
         }
         #node-info {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 300px;
+            width: 320px;
             transition: opacity 0.3s;
             opacity: 0;
+            border-left: 4px solid #00ffcc;
         }
-        .pulse {
-            animation: pulse-animation 2s infinite;
+        .topic-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            margin-right: 5px;
+            background: rgba(0, 255, 204, 0.2);
+            border: 1px solid #00ffcc;
+            text-transform: uppercase;
         }
+        .pulse { animation: pulse-animation 2s infinite; }
         @keyframes pulse-animation {
-            0% { opacity: 0.6; }
+            0% { opacity: 0.7; }
             50% { opacity: 1; }
-            100% { opacity: 0.6; }
+            100% { opacity: 0.7; }
         }
     </style>
 </head>
@@ -71,17 +84,21 @@
         
         <div id="ui-layer">
             <div class="panel pulse">
-                <h1>EL NEXO // RADAR</h1>
-                <div class="status-item" id="agent-count">Agentes: Cargando...</div>
-                <div class="status-item" id="msg-count">Mensajes: Cargando...</div>
-                <div class="status-item" id="status-text">Estado: Sincronizando con el Puente...</div>
+                <h1>EL NEXO // SEMANTIC RADAR v0.2</h1>
+                <div id="global-stats"></div>
+                <div class="status-item" id="status-text" style="margin-top:10px; color:#88ffea;">Sincronizando...</div>
+            </div>
+            <div class="panel">
+                <h2 style="font-size:0.8rem; margin:0 0 10px 0;">CLÚSTERS ACTIVOS</h2>
+                <div id="cluster-list"></div>
             </div>
         </div>
 
         <div id="node-info" class="panel">
-            <h2 id="node-name" style="margin-top:0; font-size: 1rem;">Nodo</h2>
-            <p id="node-desc" style="font-size: 0.8rem; line-height: 1.4;"></p>
-            <div id="node-links" style="font-size: 0.7rem; color: #88ffea;"></div>
+            <h2 id="node-name" style="margin-top:0; font-size: 1rem; color:#fff;">Nodo</h2>
+            <div id="node-topics" style="margin-bottom:10px;"></div>
+            <p id="node-desc" style="font-size: 0.8rem; line-height: 1.4; color:#ccc;"></p>
+            <div id="node-links" style="font-size: 0.7rem; color: #00ffcc; font-weight:bold;"></div>
         </div>
     </div>
 
@@ -95,12 +112,12 @@
         let links = [];
         let hoveredNode = null;
 
-        // Configuración visual
-        const COLORS = {
-            agent: '#00ffcc',
-            message: '#4488ff',
-            parcel: '#ff00ff',
-            line: 'rgba(0, 255, 204, 0.2)'
+        const TOPIC_COLORS = {
+            governance: '#ff4444',
+            infrastructure: '#4488ff',
+            communication: '#ffff44',
+            city: '#ff44ff',
+            default: '#00ffcc'
         };
 
         async function init() {
@@ -108,55 +125,67 @@
             window.addEventListener('resize', resize);
             
             try {
-                // Cargamos el JSON generado por el parser
                 const response = await fetch('./city_graph.json');
                 const data = await response.json();
                 
-                document.getElementById('agent-count').textContent = `Agentes: ${Object.keys(data.agents).length}`;
-                document.getElementById('msg-count').textContent = `Mensajes: ${data.messages.length}`;
-                document.getElementById('status-text').textContent = `Sincronizado: ${data.metadata.generated_at}`;
+                // Stats
+                document.getElementById('global-stats').innerHTML = `
+                    <div class="status-item"><span>Agentes:</span> <span>${Object.keys(data.agents).length}</span></div>
+                    <div class="status-item"><span>Mensajes:</span> <span>${data.messages.length}</span></div>
+                    <div class="status-item"><span>Parcelas:</span> <span>${Object.keys(data.parcels).length}</span></div>
+                `;
+                document.getElementById('status-text').textContent = `Synced: ${data.metadata.generated_at}`;
 
-                // Crear nodos de agentes
-                Object.entries(data.agents).forEach(([id, info], i) => {
+                // Clusters
+                const clusterDiv = document.getElementById('cluster-list');
+                Object.entries(data.clusters).forEach(([topic, count]) => {
+                    const item = document.createElement('div');
+                    item.className = 'status-item';
+                    item.innerHTML = `<span>${topic}</span> <span style="color:${TOPIC_COLORS[topic] || TOPIC_COLORS.default}">${count}</span>`;
+                    clusterDiv.appendChild(item);
+                });
+
+                // Create nodes
+                Object.entries(data.agents).forEach(([id, info]) => {
                     nodes.push({
                         id,
                         type: 'agent',
                         x: Math.random() * width,
                         y: Math.random() * height,
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: (Math.random() - 0.5) * 0.5,
-                        radius: 6,
-                        description: info.content_preview
+                        vx: (Math.random() - 0.5) * 0.4,
+                        vy: (Math.random() - 0.5) * 0.4,
+                        radius: 7,
+                        description: info.content_preview,
+                        topics: info.topics || []
                     });
                 });
 
-                // Crear nodos de parcelas
-                Object.entries(data.parcels).forEach(([id, info], i) => {
+                Object.entries(data.parcels).forEach(([id, info]) => {
                     nodes.push({
                         id,
                         type: 'parcel',
                         x: Math.random() * width,
                         y: Math.random() * height,
-                        vx: (Math.random() - 0.5) * 0.3,
-                        vy: (Math.random() - 0.5) * 0.3,
+                        vx: (Math.random() - 0.5) * 0.2,
+                        vy: (Math.random() - 0.5) * 0.2,
                         radius: 4,
-                        description: info.summary
+                        description: info.summary,
+                        topics: info.topics || []
                     });
                 });
 
-                // Crear enlaces basados en mensajes
                 data.messages.forEach(msg => {
                     const fromNode = nodes.find(n => n.id === msg.from);
                     const toNode = nodes.find(n => n.id === msg.to || (msg.to === 'all' && n.type === 'agent'));
                     if (fromNode && toNode && fromNode !== toNode) {
-                        links.push({ source: fromNode, target: toNode });
+                        links.push({ source: fromNode, target: toNode, topic: msg.topics[0] || 'default' });
                     }
                 });
 
                 animate();
             } catch (e) {
-                console.error("Error cargando el grafo:", e);
-                document.getElementById('status-text').textContent = "Error: No se pudo cargar city_graph.json";
+                console.error("Error:", e);
+                document.getElementById('status-text').textContent = "CRITICAL ERROR: city_graph.json not found";
             }
         }
 
@@ -168,43 +197,44 @@
         function animate() {
             ctx.clearRect(0, 0, width, height);
             
-            // Dibujar enlaces
-            ctx.beginPath();
-            ctx.strokeStyle = COLORS.line;
+            // Draw Links
             ctx.lineWidth = 1;
             links.forEach(link => {
+                ctx.beginPath();
+                ctx.strokeStyle = TOPIC_COLORS[link.topic] || TOPIC_COLORS.default;
+                ctx.globalAlpha = 0.3;
                 ctx.moveTo(link.source.x, link.source.y);
                 ctx.lineTo(link.target.x, link.target.y);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
             });
-            ctx.stroke();
 
-            // Actualizar y dibujar nodos
+            // Nodes
             nodes.forEach(node => {
                 node.x += node.vx;
                 node.y += node.vy;
-
                 if (node.x < 0 || node.x > width) node.vx *= -1;
                 if (node.y < 0 || node.y > height) node.vy *= -1;
 
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-                ctx.fillStyle = node.type === 'agent' ? COLORS.agent : COLORS.parcel;
+                
+                // Color based on primary topic
+                ctx.fillStyle = node.topics.length > 0 ? TOPIC_COLORS[node.topics[0]] : TOPIC_COLORS.default;
                 
                 if (node === hoveredNode) {
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = COLORS.agent;
-                    ctx.arc(node.x, node.y, node.radius + 2, 0, Math.PI * 2);
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = ctx.fillStyle;
+                    ctx.arc(node.x, node.y, node.radius + 3, 0, Math.PI * 2);
                 } else {
                     ctx.shadowBlur = 0;
                 }
-                
                 ctx.fill();
                 ctx.closePath();
 
-                // Etiqueta pequeña
-                ctx.fillStyle = 'rgba(0, 255, 204, 0.5)';
-                ctx.font = '10px Courier New';
-                ctx.fillText(node.id, node.x + 10, node.y + 3);
+                ctx.fillStyle = 'rgba(0, 255, 204, 0.4)';
+                ctx.font = '9px Courier New';
+                ctx.fillText(node.id, node.x + 12, node.y + 3);
             });
 
             requestAnimationFrame(animate);
@@ -213,19 +243,26 @@
         window.addEventListener('mousemove', (e) => {
             const mouseX = e.clientX;
             const mouseY = e.clientY;
-            
-            hoveredNode = nodes.find(node => {
-                const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
-                return dist < 15;
-            });
+            hoveredNode = nodes.find(node => Math.hypot(node.x - mouseX, node.y - mouseY) < 15);
 
             if (hoveredNode) {
                 nodeInfo.style.opacity = 1;
                 document.getElementById('node-name').textContent = hoveredNode.id.toUpperCase();
                 document.getElementById('node-desc').textContent = hoveredNode.description;
                 
+                const topicsDiv = document.getElementById('node-topics');
+                topicsDiv.innerHTML = '';
+                hoveredNode.topics.forEach(t => {
+                    const span = document.createElement('span');
+                    span.className = 'topic-tag';
+                    span.style.borderColor = TOPIC_COLORS[t] || TOPIC_COLORS.default;
+                    span.style.color = TOPIC_COLORS[t] || TOPIC_COLORS.default;
+                    span.textContent = t;
+                    topicsDiv.appendChild(span);
+                });
+                
                 const connections = links.filter(l => l.source === hoveredNode || l.target === hoveredNode);
-                document.getElementById('node-links').textContent = `Conexiones detectadas: ${connections.length}`;
+                document.getElementById('node-links').textContent = `Conexiones activas: ${connections.length}`;
             } else {
                 nodeInfo.style.opacity = 0;
             }
