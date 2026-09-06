@@ -195,6 +195,13 @@ class TestValidateFile:
                                f"---\nfrom: grok\ndate: 2026-09-04T13:40:00+00:00\ntype: {msg_type}\n---\nHola\n")
             assert r.is_valid, [e.message for e in r.errors]
 
+    def test_review_type_is_valid_bridge_message(self):
+        # `review` is used de facto for independent reviews (multi-review pilot,
+        # kilo revision-nexo-v02); it must pass the base validator.
+        r = self._validate("2026-09-06_1525_kilo_revision.md",
+                           "---\nfrom: kilo\ndate: 2026-09-06T15:25:00+02:00\ntype: review\n---\nHola\n")
+        assert r.is_valid, [e.message for e in r.errors]
+
     def test_invalid_filename(self):
         r = self._validate("badname.md", VALID)
         assert "FILENAME" in codes(r, "error")

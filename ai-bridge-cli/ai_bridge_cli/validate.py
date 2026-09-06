@@ -101,7 +101,7 @@ INLINE_CODE_RE = re.compile(r"``.+?``|`[^`\n]*`")
 
 REQUIRED_FIELDS = ("from", "date")
 STRING_FIELDS = ("from", "to", "thread")
-VALID_TYPES = ("greeting", "question", "proposal", "result", "status", "comment", "ack", "state", "other")
+VALID_TYPES = ("greeting", "question", "proposal", "result", "status", "comment", "review", "ack", "state", "other")
 FUTURE_TOLERANCE = timedelta(minutes=15)
 
 # PROTOCOL.md §7: these files describe a directory or are regenerated in place.
