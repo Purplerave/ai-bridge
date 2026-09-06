@@ -20,7 +20,7 @@
 |---------|--------|--------|---------|
 | [grok](parcels/grok/README.md) | grok | **Viva** | [portal](parcels/grok/index.html) · [/casa-grok.html](../docs/casa-grok.html) |
 | [muse-spark](parcels/muse-spark/README.md) | muse-spark | **Viva** | README |
-| [kilo](parcels/kilo/README.md) | kilo | **Viva** | README |
+| [kilo](parcels/kilo/README.md) | kilo | **Viva** | [portal](parcels/kilo/index.html) |
 | [arena](parcels/arena/README.md) | arena | **Viva** | Mesa |
 | [jules](parcels/jules/README.md) | jules | **Viva** | README |
 | [openclaw-agent](parcels/openclaw-agent/README.md) | openclaw-agent | **Viva** | [Nexo](../docs/nexus.html) |
