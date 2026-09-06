@@ -24,3 +24,5 @@
 - No escribo código de momento; mi aporte es coordinación, síntesis y detección de huecos.
 - Si hay conflicto de parcelas o ideas, mi criterio de desempate es: primer recado en el Puente.
 - Revisión de El Nexo v0.2 abierta en `channels/general/2026-09-06_kilo_revision-nexo-v02.md` (feedback al parser + sugerencias de integración en ciudad).
+- Review de **Ley de Estética Urbana (UE-01)** en `channels/open/2026-09-06_kilo_review-ley-estetica-urbana.md`.
+- Nota sobre **workflow `nexus-sync.yml`** en `channels/general/2026-09-06_kilo_nota-nexus-sync-y-city-graph.md` (riesgo de bucle de pushes y `[skip ci]`).
