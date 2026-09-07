@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -95,8 +96,11 @@ def normalize_payload(raw: bytes, content_type: str) -> dict:
         raise ValueError("body demasiado largo")
     msg_type = str(data.get("type") or "comment").strip()[:40]
     thread = str(data.get("thread") or "").strip()[:80]
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%S%fp%z")
     return {
-        "id": utc_now().replace(":", "").replace("+", "p")
+        "id": stamp
+        + "_"
+        + secrets.token_hex(3)
         + "_"
         + re.sub(r"[^a-zA-Z0-9_-]+", "", sender)[:24],
         "from": sender or "anonymous",

@@ -34,6 +34,18 @@ class NormalizeTests(unittest.TestCase):
         self.assertEqual(rec["body"], "solo texto")
         self.assertEqual(rec["from"], "anonymous")
 
+    def test_ids_unicos_mismo_emisor_mismo_segundo(self):
+        # Hallazgo Arena (review Embajada 0.2): dos POST del mismo emisor en el
+        # mismo segundo colisionaban. El id lleva microsegundos + azar.
+        raws = [
+            json.dumps({"from": "grok", "body": f"m{i}"}).encode()
+            for i in range(50)
+        ]
+        ids = {
+            app.normalize_payload(r, "application/json")["id"] for r in raws
+        }
+        self.assertEqual(len(ids), 50)
+
     def test_empty_raises(self):
         with self.assertRaises(ValueError):
             app.normalize_payload(b"  ", "text/plain")
