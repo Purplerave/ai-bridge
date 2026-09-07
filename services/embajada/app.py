@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Embajada — buzón HTTP mínimo (stdlib only).
+"""Embajada — buzón HTTP (stdlib only).
 
   GET  /health  → {"ok": true, "service": "embajada"}
   GET  /msgs    → últimos mensajes
   POST /msg     → crea mensaje
 
-Auth opcional (0.2):
+Auth opcional:
   Si EMBAJADA_TOKEN está definido, POST /msg exige
   header Authorization: Bearer <token>  o  X-Embajada-Token: <token>.
-  GET /health y GET /msgs siguen públicos (el listado es deliberado en piloto).
 
-Uso local:
-  python app.py
+Bind (Alwaysdata):
+  Puerto: EMBAJADA_PORT o PORT (Alwaysdata) o 8080
+  Host: EMBAJADA_HOST o IP (Alwaysdata) o 0.0.0.0
+  Evita :: si la máquina no tiene IPv6 usable.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -27,12 +29,22 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 STORE = DATA / "messages.jsonl"
-HOST = os.environ.get("EMBAJADA_HOST", "0.0.0.0")
-PORT = int(os.environ.get("EMBAJADA_PORT", "8080"))
-TOKEN = (os.environ.get("EMBAJADA_TOKEN") or "").strip()
 MAX_BODY = 64_000
 MAX_LIST = 50
-VERSION = "0.2"
+VERSION = "0.3.1"
+
+
+def resolve_port() -> int:
+    raw = (os.environ.get("EMBAJADA_PORT") or os.environ.get("PORT") or "8080").strip()
+    return int(raw)
+
+
+def resolve_host() -> str:
+    host = (os.environ.get("EMBAJADA_HOST") or os.environ.get("IP") or "").strip()
+    if not host or host in (":", "::", "*"):
+        # :: falla en algunos nodos Alwaysdata (Address family not supported)
+        return "0.0.0.0"
+    return host
 
 
 def utc_now() -> str:
@@ -109,7 +121,6 @@ def normalize_payload(raw: bytes, content_type: str) -> dict:
 
 
 def token_ok(headers) -> bool:
-    """True si no hay token configurado o el request aporta el correcto."""
     expected = (os.environ.get("EMBAJADA_TOKEN") or "").strip()
     if not expected:
         return True
@@ -126,8 +137,9 @@ class Handler(BaseHTTPRequestHandler):
     server_version = f"Embajada/{VERSION}"
 
     def log_message(self, fmt: str, *args) -> None:
-        sys_stderr = __import__("sys").stderr
-        sys_stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+        import sys
+
+        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
     def _send(self, code: int, payload: dict | list) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -206,10 +218,21 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     ensure_store()
-    httpd = ThreadingHTTPServer((HOST, PORT), Handler)
+    host = resolve_host()
+    port = resolve_port()
+    try:
+        httpd = ThreadingHTTPServer((host, port), Handler)
+    except OSError as e:
+        # Último recurso: 0.0.0.0
+        if host != "0.0.0.0":
+            print(f"bind {host}:{port} falló ({e}); reintento 0.0.0.0", flush=True)
+            host = "0.0.0.0"
+            httpd = ThreadingHTTPServer((host, port), Handler)
+        else:
+            raise
     auth = "on" if (os.environ.get("EMBAJADA_TOKEN") or "").strip() else "off"
     print(
-        f"embajada {VERSION} on http://{HOST}:{PORT} (auth={auth})",
+        f"embajada {VERSION} on http://{host}:{port} (auth={auth})",
         flush=True,
     )
     httpd.serve_forever()
