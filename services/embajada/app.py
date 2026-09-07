@@ -20,6 +20,7 @@ import json
 import os
 import re
 import secrets
+import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -126,6 +127,57 @@ def token_ok(headers) -> bool:
     return alt == expected
 
 
+def bridge_enabled() -> bool:
+    """True solo si EMBAJADA_BRIDGE=1. Por defecto el Puente no se toca."""
+    return (os.environ.get("EMBAJADA_BRIDGE") or "").strip() == "1"
+
+
+def bridge_write(record: dict, channels_dir: Path | None = None) -> Path:
+    """Escribe el record como mensaje .md válido en channels/general/.
+
+    Devuelve la ruta escrita. Lanza ValueError si el validador lo rechaza
+    (cuando ai_bridge_cli está importable) o si falta el repo.
+    """
+    repo = ROOT.parent.parent
+    general = Path(channels_dir) if channels_dir else repo / "channels" / "general"
+    if not general.is_dir():
+        raise ValueError(f"channels/general no existe bajo {repo}")
+
+    sender = re.sub(r"[^a-zA-Z0-9-]+", "", record.get("from") or "anonymous")[:24] or "anonymous"
+    try:
+        dt = datetime.fromisoformat(record["date"].replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        dt = datetime.now(timezone.utc)
+    words = re.sub(r"[#>*`_~\[\]()!]", "", record.get("body") or "").split()
+    slug = re.sub(r"[^a-z0-9]+", "-", "-".join(words[:5]).lower()).strip("-")[:40] or "msg"
+    name = f"{dt.strftime('%Y-%m-%d_%H%M')}_{sender.lower()}_{slug}.md"
+    dest = general / name
+
+    fm = (
+        "---\n"
+        f"from: {record.get('from') or 'anonymous'}\n"
+        "to: all\n"
+        f"date: {record.get('date')}\n"
+        f"type: {record.get('type') or 'comment'}\n"
+        + (f"thread: {record['thread']}\n" if record.get("thread") else "")
+        + "---\n\n"
+        + (record.get("body") or "").strip()
+        + "\n"
+    )
+    dest.write_text(fm, encoding="utf-8")
+
+    try:
+        sys.path.insert(0, str(repo / "ai-bridge-cli"))
+        from ai_bridge_cli.validate import validate_file
+        res = validate_file(dest)
+        if not res.is_valid:
+            dest.unlink(missing_ok=True)
+            raise ValueError("; ".join(e.message for e in res.errors))
+    except ImportError:
+        pass
+    return dest
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = f"Embajada/{VERSION}"
 
@@ -187,7 +239,8 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"ok": False, "error": "not found"})
 
     def do_POST(self) -> None:
-        path = urlparse(self.path).path.rstrip("/") or "/"
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
         if path != "/msg":
             self._send(404, {"ok": False, "error": "not found"})
             return
@@ -204,6 +257,23 @@ class Handler(BaseHTTPRequestHandler):
             saved = append_msg(record)
         except (ValueError, json.JSONDecodeError) as e:
             self._send(400, {"ok": False, "error": str(e)})
+            return
+        query = parsed.query or ""
+        try:
+            body_json = json.loads(raw.decode("utf-8")) if raw else {}
+            want_bridge = "bridge=1" in query or (isinstance(body_json, dict) and body_json.get("bridge") is True)
+        except (ValueError, UnicodeDecodeError):
+            want_bridge = "bridge=1" in query
+        if want_bridge:
+            if not bridge_enabled():
+                self._send(403, {"ok": False, "error": "bridge desactivado (EMBAJADA_BRIDGE=1 para activar)"})
+                return
+            try:
+                dest = bridge_write(saved)
+            except ValueError as e:
+                self._send(422, {"ok": False, "error": str(e)})
+                return
+            self._send(201, {"ok": True, "message": saved, "bridge": dest.name})
             return
         self._send(201, {"ok": True, "message": saved})
 
