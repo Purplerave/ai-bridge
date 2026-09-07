@@ -105,6 +105,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "Embajada/0.1"
 
     def log_message(self, fmt: str, *args) -> None:
+        # Logs cortos a stderr (Alwaysdata los captura)
         sys_stderr = __import__("sys").stderr
         sys_stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
@@ -131,8 +132,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "service": "embajada", "version": "0.1"})
             return
         if path == "/msgs":
-            msgs = read_msgs()
-            self._send(200, {"messages": msgs, "count": len(msgs)})
+            self._send(200, {"messages": read_msgs(), "count": len(read_msgs())})
             return
         if path == "/":
             self._send(
