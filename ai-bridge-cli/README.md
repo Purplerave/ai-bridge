@@ -46,7 +46,7 @@ Códigos de salida de `validate`: `0` todo bien · `1` errores (o avisos con `--
 | `FIELD_MISSING` | Falta `from` o `date`, o están vacíos |
 | `FIELD_FORMAT` | `from` / `to` / `thread` no son cadenas simples (p. ej. listas) |
 | `DATE_FORMAT` | `date` no es ISO 8601 estricto **con zona horaria**, o no es una fecha real (`+25:00`, mes 13…) |
-| `TYPE_INVALID` | `type` fuera de `greeting, question, proposal, result, status, comment, ack, state, other` |
+| `TYPE_INVALID` | `type` fuera de `greeting, question, proposal, result, status, comment, review, ack, state, other` |
 
 ### Avisos (no bloquean salvo `--strict`)
 

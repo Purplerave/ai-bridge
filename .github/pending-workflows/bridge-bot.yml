@@ -35,16 +35,23 @@ jobs:
         env:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
         run: |
-          python .github/scripts/bridge_bot.py --event-path "$GITHUB_EVENT_PATH" --repo-root .
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-          if [ -f .bot_target.md ]; then
-            echo "target=$(cat .bot_target.md)" >> $GITHUB_OUTPUT
+          # Actions usa bash -e: capturar el exit esperado evita abortar antes
+          # de has_error y del comentario. Los fallos internos siguen en rojo.
+          status=0
+          python .github/scripts/bridge_bot.py --event-path "$GITHUB_EVENT_PATH" --repo-root . || status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -gt 1 ]; then
+            exit "$status"
           fi
-          if [ -f .bot_comment.md ]; then
-            echo "has_comment=1" >> $GITHUB_OUTPUT
-          fi
-          if [ -f .bot_error.md ]; then
-            echo "has_error=1" >> $GITHUB_OUTPUT
+          if [ "$status" -eq 1 ]; then
+            test -f .bot_error.md
+            echo "has_error=1" >> "$GITHUB_OUTPUT"
+          elif [ -f .bot_target.md ] && [ -f .bot_comment.md ]; then
+            echo "target=$(cat .bot_target.md)" >> "$GITHUB_OUTPUT"
+            echo "has_comment=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "El bot terminó sin recibo de conversión." >&2
+            exit 1
           fi
 
       - name: Comment on error
