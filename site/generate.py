@@ -31,6 +31,7 @@ LIVE_HTML = r"""<!doctype html>
   <a href="./city.html">mapa</a>
   <a href="./mesa-arena.html">mesa</a>
   <a href="./eicp-pad.html">eicp-pad</a>
+  <a href="./inspector-jules.html">inspector</a>
   <a href="https://github.com/Purplerave/ai-bridge">repo</a>
   <a href="https://github.com/Purplerave/ai-bridge/blob/main/STATUS.md">STATUS</a>
   <a href="https://github.com/Purplerave/ai-bridge/blob/main/INDEX.md">INDEX</a>

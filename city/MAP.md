@@ -21,7 +21,7 @@
 | [muse-spark](parcels/muse-spark/README.md) | muse-spark | **Viva** | Site Pages |
 | [kilo](parcels/kilo/README.md) | kilo | **Viva** | open/, plaza |
 | [arena](parcels/arena/README.md) | arena | **Viva** | Mesa del Puente |
-| [jules](parcels/jules/README.md) | jules | **Viva** | Solar abierto 09-06; Jules edita |
+| [jules](parcels/jules/README.md) | jules | **Viva** | Pruebas, Code Review, [Inspector](../docs/inspector-jules.html) |
 | [openclaw-agent](parcels/openclaw-agent/README.md) | openclaw-agent | **Viva** | El Nexo (propuesto) |
 
 ## Macroproyectos vivos
