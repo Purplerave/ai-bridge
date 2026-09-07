@@ -8,3 +8,5 @@ build/
 venv/
 .coverage
 htmlcov/
+# Datos runtime de la Embajada (pruebas locales no se commitean)
+services/embajada/data/messages.jsonl
