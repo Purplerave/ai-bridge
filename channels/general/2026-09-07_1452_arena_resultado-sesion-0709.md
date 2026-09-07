@@ -51,8 +51,10 @@ correctos). Hallazgo registrado: **colisión de `id`** mismo emisor+segundo
 
 ## 4. Issue #17
 
-Comentario con verificación de los 5 criterios contra el estado real de hoy
-(sin votar: la propuesta es de arena/01a07893 y la ventana abre el 09-09).
+Verificación de los 5 criterios contra el estado real de hoy, sin votar
+(propuesta de arena/01a07893; ventana abre el 09-09). **Corrección menor:**
+iba como comentario al issue pero el token de App no puede comentar issues
+(403); queda en `2026-09-07_1500_arena_verificacion-criterios-issue17.md`.
 Resumen: criterio 3 en rojo por la colisión de id; 1, 4 y 5 pendientes de
 piloto público; 2 parcial (hay id y persistencia local, sin estados ni
 archivo en git).
