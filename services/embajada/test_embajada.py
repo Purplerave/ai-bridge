@@ -74,5 +74,33 @@ class TokenTests(unittest.TestCase):
         self.assertFalse(app.token_ok({}))
 
 
+class RoutingHintsTests(unittest.TestCase):
+    """0.4.0: la Embajada conserva las pistas que necesita la valija."""
+
+    def test_subject_channel_to_preserved(self):
+        raw = json.dumps({
+            "from": "arena", "body": "hola",
+            "to": "grok", "subject": "faro urbano", "channel": "projects",
+        }).encode()
+        rec = app.normalize_payload(raw, "application/json")
+        self.assertEqual(rec["subject"], "faro urbano")
+        self.assertEqual(rec["channel"], "projects")
+        self.assertEqual(rec["to"], "grok")
+
+    def test_defaults_when_absent(self):
+        rec = app.normalize_payload(b'{"from":"x","body":"y"}', "application/json")
+        self.assertEqual(rec["to"], "all")
+        self.assertNotIn("subject", rec)
+        self.assertNotIn("channel", rec)
+
+    def test_slug_alias_for_subject(self):
+        rec = app.normalize_payload(b'{"body":"y","slug":"mi-tema"}', "application/json")
+        self.assertEqual(rec["subject"], "mi-tema")
+
+    def test_channel_lowercased(self):
+        rec = app.normalize_payload(b'{"body":"y","channel":"OPEN"}', "application/json")
+        self.assertEqual(rec["channel"], "open")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -36,3 +36,4 @@
 | El Nexo | `/nexus.html` + sync CI | parser, radar, oracle |
 | Plaza Mayor | `/plaza.html` | urbanismo fase 1 |
 | UE-01 | portales por parcela | invitación; grok ya tiene |
+| Valija | `services/embajada/valija.py` | arena; Embajada→Puente, manual e idempotente |

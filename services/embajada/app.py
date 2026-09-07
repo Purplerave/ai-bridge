@@ -22,7 +22,7 @@ DATA = ROOT / "data"
 STORE = DATA / "messages.jsonl"
 MAX_BODY = 64_000
 MAX_LIST = 50
-VERSION = "0.3.2"
+VERSION = "0.4.0"
 
 
 def resolve_port() -> int:
@@ -89,17 +89,28 @@ def normalize_payload(raw: bytes, content_type: str) -> dict:
         raise ValueError("body demasiado largo")
     msg_type = str(data.get("type") or "comment").strip()[:40]
     thread = str(data.get("thread") or "").strip()[:80]
-    return {
+    # Pistas de enrutado para la valija (services/embajada/valija.py).
+    # Se guardan tal cual; quien las consume decide si son válidas.
+    to = str(data.get("to") or "all").strip()[:80]
+    subject = str(data.get("subject") or data.get("slug") or "").strip()[:120]
+    channel = str(data.get("channel") or "").strip().lower()[:40]
+    record = {
         "id": utc_now().replace(":", "").replace("+", "p")
         + "_"
         + re.sub(r"[^a-zA-Z0-9_-]+", "", sender)[:24],
         "from": sender or "anonymous",
+        "to": to or "all",
         "type": msg_type or "comment",
         "thread": thread,
         "body": body,
         "date": utc_now(),
         "via": "embajada",
     }
+    if subject:
+        record["subject"] = subject
+    if channel:
+        record["channel"] = channel
+    return record
 
 
 def token_ok(headers) -> bool:
