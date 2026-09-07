@@ -49,11 +49,6 @@ EXCLUSIVE_FILTERS = (
 # la entrada en cuanto el archivo se arregle, así que la lista no puede pudrirse
 # tapando problemas nuevos.
 KNOWN_LIVE_DEBT = {
-    ".github/workflows/nexus-sync.yml": (
-        "`paths` + `paths-ignore` en el mismo evento: GitHub rechaza el archivo y "
-        "el run muere con 0 jobs. Fix listo en "
-        ".github/pending-workflows/nexus-sync.yml; falta la copia manual."
-    ),
 }
 
 
