@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
 """Embajada — buzón HTTP (stdlib only).
 
-  GET  /health  → {"ok": true, "service": "embajada"}
-  GET  /msgs    → últimos mensajes
-  POST /msg     → crea mensaje
-
-Auth opcional:
-  Si EMBAJADA_TOKEN está definido, POST /msg exige
-  header Authorization: Bearer <token>  o  X-Embajada-Token: <token>.
-
-Bind (Alwaysdata):
-  Puerto: EMBAJADA_PORT o PORT (Alwaysdata) o 8080
-  Host: EMBAJADA_HOST o IP (Alwaysdata) o 0.0.0.0
-  Evita :: si la máquina no tiene IPv6 usable.
+Alwaysdata inyecta PORT + IP (IPv6). El proxy habla por IPv6; hay que
+escuchar en :: (dual-stack) o el alproxy devuelve 502.
 """
 
 from __future__ import annotations
@@ -21,6 +11,7 @@ import json
 import os
 import re
 import socket
+import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -31,20 +22,12 @@ DATA = ROOT / "data"
 STORE = DATA / "messages.jsonl"
 MAX_BODY = 64_000
 MAX_LIST = 50
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 
 
 def resolve_port() -> int:
     raw = (os.environ.get("EMBAJADA_PORT") or os.environ.get("PORT") or "8080").strip()
     return int(raw)
-
-
-def resolve_host() -> str:
-    host = (os.environ.get("EMBAJADA_HOST") or os.environ.get("IP") or "").strip()
-    if not host or host in (":", "::", "*"):
-        # :: falla en algunos nodos Alwaysdata (Address family not supported)
-        return "0.0.0.0"
-    return host
 
 
 def utc_now() -> str:
@@ -61,9 +44,8 @@ def ensure_store(store: Path | None = None) -> Path:
 
 def append_msg(record: dict, store: Path | None = None) -> dict:
     path = ensure_store(store)
-    line = json.dumps(record, ensure_ascii=False) + "\n"
     with path.open("a", encoding="utf-8") as f:
-        f.write(line)
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
     return record
 
 
@@ -125,20 +107,29 @@ def token_ok(headers) -> bool:
     if not expected:
         return True
     auth = (headers.get("Authorization") or headers.get("authorization") or "").strip()
-    if auth.lower().startswith("bearer "):
-        got = auth[7:].strip()
-        if got == expected:
-            return True
+    if auth.lower().startswith("bearer ") and auth[7:].strip() == expected:
+        return True
     alt = (headers.get("X-Embajada-Token") or headers.get("x-embajada-token") or "").strip()
     return alt == expected
+
+
+class DualStackServer(ThreadingHTTPServer):
+    """Escucha en IPv6 :: con dual-stack (IPv4 mapeada si el SO lo permite)."""
+
+    address_family = socket.AF_INET6
+
+    def server_bind(self) -> None:
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except OSError:
+            pass
+        super().server_bind()
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = f"Embajada/{VERSION}"
 
     def log_message(self, fmt: str, *args) -> None:
-        import sys
-
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
     def _send(self, code: int, payload: dict | list) -> None:
@@ -216,25 +207,23 @@ class Handler(BaseHTTPRequestHandler):
         self._send(201, {"ok": True, "message": saved})
 
 
+def make_server(port: int) -> ThreadingHTTPServer:
+    """Preferir :: (Alwaysdata); si no, 0.0.0.0."""
+    try:
+        httpd = DualStackServer(("::", port), Handler)
+        print(f"bind dual-stack :: port {port}", flush=True)
+        return httpd
+    except OSError as e:
+        print(f"bind :: falló ({e}); uso 0.0.0.0", flush=True)
+        return ThreadingHTTPServer(("0.0.0.0", port), Handler)
+
+
 def main() -> None:
     ensure_store()
-    host = resolve_host()
     port = resolve_port()
-    try:
-        httpd = ThreadingHTTPServer((host, port), Handler)
-    except OSError as e:
-        # Último recurso: 0.0.0.0
-        if host != "0.0.0.0":
-            print(f"bind {host}:{port} falló ({e}); reintento 0.0.0.0", flush=True)
-            host = "0.0.0.0"
-            httpd = ThreadingHTTPServer((host, port), Handler)
-        else:
-            raise
+    httpd = make_server(port)
     auth = "on" if (os.environ.get("EMBAJADA_TOKEN") or "").strip() else "off"
-    print(
-        f"embajada {VERSION} on http://{host}:{port} (auth={auth})",
-        flush=True,
-    )
+    print(f"embajada {VERSION} port={port} auth={auth}", flush=True)
     httpd.serve_forever()
 
 
