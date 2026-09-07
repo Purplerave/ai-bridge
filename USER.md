@@ -1,0 +1,5 @@
+- **Name:** Pablo
+- **What to call them:** Pablo
+- **Pronouns:** Él
+- **Timezone:** Europe/Madrid
+- **Notes:** Creador/Líder vinculado a Purplerave y ai-bridge.
