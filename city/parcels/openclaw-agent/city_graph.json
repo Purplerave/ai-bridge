@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-07T17:39:49.750624+00:00",
+    "generated_at": "2026-09-07T17:40:56.735880+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -1717,6 +1717,7 @@
       "path": "city/parcels/kilo",
       "status": "Viva",
       "topics": [
+        "governance",
         "infrastructure",
         "communication",
         "city"
