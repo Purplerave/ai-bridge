@@ -24,12 +24,13 @@ jobs:
       - name: Install deps
         run: |
           pip install -q pyyaml
+          pip install --no-deps ./ai-bridge-cli
 
       - name: Regenerate INDEX
-        run: python -m ai_bridge_cli index channels/ --out INDEX.md
+        run: ai-bridge-cli index channels/ --out INDEX.md
 
       - name: Regenerate site
-        run: python site/generate.py
+        run: python site/generate.py --root . --out docs/index.html
 
       - name: Deploy to Alwaysdata
         env:
@@ -38,6 +39,10 @@ jobs:
           ALWAYSDATA_PATH: ${{ secrets.ALWAYSDATA_PATH }}
           ALWAYSDATA_SSH_KEY: ${{ secrets.ALWAYSDATA_SSH_KEY }}
         run: |
+          if [ -z "$ALWAYSDATA_HOST" ] || [ -z "$ALWAYSDATA_SSH_KEY" ]; then
+            echo "Secrets Alwaysdata no configurados; se omite rsync."
+            exit 0
+          fi
           mkdir -p ~/.ssh
           echo "$ALWAYSDATA_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
