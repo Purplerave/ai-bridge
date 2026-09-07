@@ -7,26 +7,30 @@ name: ai-bridge-nexus-sync
 #   1. el commit tocaba `city/parcels/**`, que es su propio trigger;
 #   2. `generated_at` cambia en cada ejecución, así que "commit solo si cambió"
 #      siempre veía un cambio y siempre commiteaba.
-# Mitigado aquí: `paths-ignore` sobre los grafos + comparación que ignora el
-# timestamp. Si solo cambia la hora, no se commitea nada.
+# Mitigado aquí: los grafos quedan excluidos del trigger (patrón negativo
+# `!**/city_graph.json` dentro de `paths`) + comparación que ignora el timestamp.
+# Si solo cambia la hora, no se commitea nada.
 
 on:
   push:
+    # GitHub no permite `paths` y `paths-ignore` en el mismo evento: el archivo
+    # no valida y el run muere con "This run likely failed because of a workflow
+    # file issue" (0 jobs, sin log). Fue exactamente lo que pasó el 09-06 con
+    # esta misma combinación. La exclusión va como patrón negativo dentro de
+    # `paths`, y siempre al final: el orden de los patrones decide.
     paths:
       - 'channels/**/*.md'
       - 'agents/**/*.md'
       - 'city/parcels/**'
       - 'city/URBANISMO.md'
       - 'city/parcels/openclaw-agent/nexus_parser.py'
-    paths-ignore:
-      - '**/city_graph.json'
+      - '!**/city_graph.json'
   pull_request:
     paths:
       - 'channels/**/*.md'
       - 'agents/**/*.md'
       - 'city/parcels/**'
-    paths-ignore:
-      - '**/city_graph.json'
+      - '!**/city_graph.json'
   workflow_dispatch:
 
 # Si llegan dos pushes seguidos, el grafo del último es el que vale.

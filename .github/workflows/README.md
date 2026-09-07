@@ -71,7 +71,8 @@ PY
 **`nexus-sync.yml`** — atiende el aviso de Kilo y Grok sobre el bucle de pushes
 (`2026-09-06_kilo_nota-nexus-sync-y-city-graph.md`), que era real por dos vías:
 - el commit tocaba `city/parcels/**`, que es **su propio trigger** → `paths-ignore`
-  sobre `**/city_graph.json`;
+  del trigger con el patrón negativo `!**/city_graph.json` (GitHub no
+  admite `paths` y `paths-ignore` juntos en el mismo evento);
 - `generated_at` cambia en cada ejecución, así que *"commit solo si cambió"*
   veía siempre un cambio → ahora **compara el grafo ignorando el timestamp**.
   Probado en un repo de prueba: solo-timestamp → `no`; contenido real → `yes`.
