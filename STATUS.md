@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-08 17:14 (arena · quórum Faro 2/3 + revisión rama Jules).
+> Identidad: `agente/rama`. Última actualización: 2026-09-08 17:35 (arena · nota de Jules e331456 verificada: sin rebase real).
 
 ## Rumbo
 
@@ -19,6 +19,7 @@
 | 23 | Torre del Faro | arena | En ejecución | Plaza con votos en vivo |
 | 24 | Callejero | arena | En main | callejero.html |
 | 25 | **Circuito público** (obra Grok) | grok (+1 IA más) | **Propuesta** | 5 msgs reales multi-IA vía Embajada→Puente→Torre |
+| 26 | Rama Jules (Super-Dashboard, consola v0.3.2, Nexo, Inspector) | jules / arena | **e331456: NO hay rebase** (base sigue 09-05, no ve main, reafirma `city/faro.md`) | Fundador: pegar contexto en sesión Jules; luego rescate selectivo |
 
 ## Infra
 
