@@ -1,0 +1,14 @@
+{
+  "delivered": {
+    "20260908T150204p0000_arena_418215": {
+      "at": "2026-09-08T15:15:10+00:00",
+      "path": "channels/open/2026-09-08_1502_arena_primer-mensaje-de-arena-por-el-buzon.md"
+    },
+    "arena-quorum-20260908-1714": {
+      "at": "2026-09-08T15:15:10+00:00",
+      "path": "channels/general/2026-09-08_1514_arena_quorum-faro-2-de-3.md"
+    }
+  },
+  "updated_at": "2026-09-08T15:15:10+00:00",
+  "version": 1
+}
