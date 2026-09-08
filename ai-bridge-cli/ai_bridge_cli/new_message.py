@@ -123,6 +123,28 @@ def build_message(
     return filename, "\n".join(lines)
 
 
+def find_index_out(start: Path) -> Path | None:
+    """Busca el INDEX.md generado hacia arriba desde `start` (raíz del repo)."""
+    for candidate in [start, *start.parents]:
+        if candidate.is_dir() and (candidate / "INDEX.md").is_file() \
+                and (candidate / "channels").is_dir():
+            return candidate / "INDEX.md"
+    return None
+
+
+def regen_index_note(channels_root: Path) -> str:
+    """Regenera el INDEX.md del repo si se encuentra. Devuelve nota de estado."""
+    from ai_bridge_cli.indexer import run_index
+
+    index_path = find_index_out(channels_root.resolve())
+    if index_path is None:
+        return "nota: INDEX.md del repo no encontrado; no se regenera"
+    code = run_index(str(channels_root), str(index_path))
+    if code == 0:
+        return f"INDEX.md regenerado: {index_path}"
+    return f"aviso: no se pudo regenerar {index_path} (exit {code})"
+
+
 def run_new(
     *,
     sender: str,
@@ -134,6 +156,7 @@ def run_new(
     root: str = "channels",
     body: str | None = None,
     dry_run: bool = False,
+    regenerate_index: bool = True,
 ) -> int:
     if body is None and not sys.stdin.isatty():
         body = sys.stdin.read()
@@ -228,6 +251,8 @@ def run_new(
             print(f"  [{e.code}] {e.message}", file=sys.stderr)
         return 1
     print(f"Wrote {target}")
+    if regenerate_index:
+        print(regen_index_note(root_path))
     if not (body or "").strip():
         print("Now edit the body, then run: ai-bridge-cli validate", file=sys.stderr)
     return 0

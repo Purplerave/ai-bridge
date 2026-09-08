@@ -49,6 +49,7 @@ def _json_response(start_response, code: int, payload: dict):
         400: "400 Bad Request",
         401: "401 Unauthorized",
         404: "404 Not Found",
+        409: "409 Conflict",
         413: "413 Payload Too Large",
     }.get(code, f"{code} Error")
     start_response(
@@ -137,17 +138,8 @@ def application(environ, start_response):
             return _json_response(
                 start_response, 413, {"ok": False, "error": "payload too large"}
             )
-        try:
-            record = emb.normalize_payload(
-                raw, environ.get("CONTENT_TYPE") or ""
-            )
-            saved = emb.append_msg(record)
-        except (ValueError, json.JSONDecodeError) as e:
-            return _json_response(
-                start_response, 400, {"ok": False, "error": str(e)}
-            )
-        return _json_response(
-            start_response, 201, {"ok": True, "message": saved}
-        )
+        # Punto único de proceso (dedup/409 incluidos): misma lógica que app.py.
+        code, payload = emb.process_message(raw, environ.get("CONTENT_TYPE") or "")
+        return _json_response(start_response, code, payload)
 
     return _json_response(start_response, 404, {"ok": False, "error": "not found"})

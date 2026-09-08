@@ -7,9 +7,11 @@ escuchar en :: (dual-stack) o el alproxy devuelve 502.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import secrets
 import socket
 import sys
 from datetime import datetime, timezone
@@ -22,7 +24,8 @@ DATA = ROOT / "data"
 STORE = DATA / "messages.jsonl"
 MAX_BODY = 64_000
 MAX_LIST = 50
-VERSION = "0.4.0"
+VERSION = "0.5.0"
+CLIENT_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$")
 
 
 def resolve_port() -> int:
@@ -32,6 +35,34 @@ def resolve_port() -> int:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def gen_id(sender: str, client_id: str | None = None) -> str:
+    """Identidad de un mensaje.
+
+    - Sin `client_id`: sello de tiempo + emisor + sufijo aleatorio. El sufijo
+      existe porque el sello por segundo colisionó de verdad (dos POST del mismo
+      emisor en el mismo segundo compartían id: criterio 3 del issue #17).
+    - Con `client_id`: lo normaliza y lo respeta, para reintentos idempotentes.
+    """
+    if client_id:
+        cleaned = client_id.strip()
+        if not CLIENT_ID_RE.match(cleaned):
+            raise ValueError(
+                "id de cliente inválido: usa [a-zA-Z0-9] y .:- , máximo 80"
+            )
+        return cleaned
+    stamp = utc_now().replace(":", "").replace("-", "").replace("+", "p")
+    sender_slug = re.sub(r"[^a-zA-Z0-9_-]+", "", sender)[:24] or "anon"
+    return f"{stamp}_{sender_slug}_{secrets.token_hex(3)}"
+
+
+def content_fingerprint(record: dict) -> str:
+    """Huella del contenido relevante para dedup (ignora metadatos de llegada)."""
+    seed = "|".join(
+        str(record.get(k) or "") for k in ("from", "to", "type", "thread", "subject", "body")
+    )
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
 
 def ensure_store(store: Path | None = None) -> Path:
@@ -49,7 +80,7 @@ def append_msg(record: dict, store: Path | None = None) -> dict:
     return record
 
 
-def read_msgs(limit: int = MAX_LIST, store: Path | None = None) -> list[dict]:
+def read_msgs(limit: int | None = MAX_LIST, store: Path | None = None) -> list[dict]:
     path = ensure_store(store)
     rows: list[dict] = []
     try:
@@ -64,7 +95,7 @@ def read_msgs(limit: int = MAX_LIST, store: Path | None = None) -> list[dict]:
             rows.append(json.loads(line))
         except json.JSONDecodeError:
             continue
-    return rows[-limit:]
+    return rows if limit is None else rows[-limit:]
 
 
 def normalize_payload(raw: bytes, content_type: str) -> dict:
@@ -95,15 +126,16 @@ def normalize_payload(raw: bytes, content_type: str) -> dict:
     subject = str(data.get("subject") or data.get("slug") or "").strip()[:120]
     channel = str(data.get("channel") or "").strip().lower()[:40]
     record = {
-        "id": utc_now().replace(":", "").replace("+", "p")
-        + "_"
-        + re.sub(r"[^a-zA-Z0-9_-]+", "", sender)[:24],
+        "id": gen_id(sender or "anonymous", str(data.get("id") or "").strip() or None),
         "from": sender or "anonymous",
         "to": to or "all",
         "type": msg_type or "comment",
         "thread": thread,
         "body": body,
         "date": utc_now(),
+        # Estado honesto (issue #17, criterio 2): aquí solo se puede prometer
+        # "recibido". "archivado" lo declara la valija cuando llega a channels/.
+        "state": "recibido",
         "via": "embajada",
     }
     if subject:
@@ -111,6 +143,45 @@ def normalize_payload(raw: bytes, content_type: str) -> dict:
     if channel:
         record["channel"] = channel
     return record
+
+
+def find_by_id(msg_id: str, store: Path | None = None) -> dict | None:
+    """Último récord del almacén con ese id, o None."""
+    if not msg_id:
+        return None
+    for row in reversed(read_msgs(limit=None, store=store)):
+        if str(row.get("id") or "") == msg_id:
+            return row
+    return None
+
+
+def process_message(
+    raw: bytes, content_type: str, store: Path | None = None
+) -> tuple[int, dict]:
+    """Trayecto completo de un POST: normalizar, dedup, guardar.
+
+    Devuelve (código HTTP, cuerpo JSON). Punto único que comparten
+    `app.Handler.do_POST` y `wsgi.application` (GOVERNANCE §0: no duplicar).
+
+    - id nuevo → 201 Created.
+    - id repetido, mismo contenido → 200 con `dedup: true` (reintento seguro).
+    - id repetido, contenido distinto → 409 rechazo explícito (criterio 3).
+    """
+    try:
+        record = normalize_payload(raw, content_type)
+    except (ValueError, json.JSONDecodeError) as e:
+        return 400, {"ok": False, "error": str(e)}
+    existing = find_by_id(str(record["id"]), store)
+    if existing is not None:
+        if content_fingerprint(existing) == content_fingerprint(record):
+            return 200, {"ok": True, "dedup": True, "message": existing}
+        return 409, {
+            "ok": False,
+            "error": "id_exists: mismo id con contenido distinto; elige otro id",
+            "id": record["id"],
+        }
+    saved = append_msg(record, store)
+    return 201, {"ok": True, "message": saved}
 
 
 def token_ok(headers) -> bool:
@@ -209,23 +280,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(413, {"ok": False, "error": "payload too large"})
             return
         raw = self.rfile.read(length) if length else b""
-        try:
-            record = normalize_payload(raw, self.headers.get("Content-Type") or "")
-            saved = append_msg(record)
-        except (ValueError, json.JSONDecodeError) as e:
-            self._send(400, {"ok": False, "error": str(e)})
-            return
-        self._send(201, {"ok": True, "message": saved})
+        code, payload = process_message(raw, self.headers.get("Content-Type") or "")
+        self._send(code, payload)
 
 
 def make_server(port: int) -> ThreadingHTTPServer:
     """Preferir :: (Alwaysdata); si no, 0.0.0.0."""
     try:
         httpd = DualStackServer(("::", port), Handler)
-        print(f"bind dual-stack :: port {port}", flush=True)
+        print(f"bind dual-stack :: port {port}", file=sys.stderr, flush=True)
         return httpd
     except OSError as e:
-        print(f"bind :: falló ({e}); uso 0.0.0.0", flush=True)
+        print(f"bind :: falló ({e}); uso 0.0.0.0", file=sys.stderr, flush=True)
         return ThreadingHTTPServer(("0.0.0.0", port), Handler)
 
 
@@ -234,7 +300,7 @@ def main() -> None:
     port = resolve_port()
     httpd = make_server(port)
     auth = "on" if (os.environ.get("EMBAJADA_TOKEN") or "").strip() else "off"
-    print(f"embajada {VERSION} port={port} auth={auth}", flush=True)
+    print(f"embajada {VERSION} port={port} auth={auth}", file=sys.stderr, flush=True)
     httpd.serve_forever()
 
 
