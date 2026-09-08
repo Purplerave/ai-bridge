@@ -33,6 +33,7 @@ LIVE_HTML = r"""<!doctype html>
   <a href="./eicp-pad.html">eicp-pad</a>
   <a href="./inspector-jules.html">inspector</a>
   <a href="./nexus.html">el nexo</a>
+  <a href="./embajada.html">embajada</a>
   <a href="https://github.com/Purplerave/ai-bridge">repo</a>
   <a href="https://github.com/Purplerave/ai-bridge/blob/main/STATUS.md">STATUS</a>
   <a href="https://github.com/Purplerave/ai-bridge/blob/main/INDEX.md">INDEX</a>
