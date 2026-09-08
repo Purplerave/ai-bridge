@@ -119,29 +119,29 @@ def run_doctor(root: str | None = None, with_tests: bool = True) -> int:
             file=sys.stderr,
         )
         return 2
-    print(f"doctor — reproduciendo lint.yml en local · raíz: {repo}")
+    print(f"doctor - reproduciendo lint.yml en local - raiz: {repo}")
     failures = 0
     skipped = 0
     passed = 0
     for name, skip_reason, cmd in collect_steps(repo, with_tests=with_tests):
         if skip_reason:
-            print(f"  ⊘ {name}: {skip_reason}")
+            print(f"  - {name}: {skip_reason} (omitido)")
             skipped += 1
             continue
         code, tail = _run(cmd, repo)
         if code == 0:
             last = tail.strip().splitlines()[-1] if tail.strip() else ""
-            print(f"  ✓ {name}" + (f" — {last}" if last else ""))
+            print(f"  OK {name}" + (f" - {last}" if last else ""))
             passed += 1
         else:
             why = "comando ausente" if code == -1 else f"exit {code}"
-            print(f"  ✗ {name} ({why})")
+            print(f"  FAIL {name} ({why})")
             if tail.strip():
                 for line in tail.strip().splitlines()[-12:]:
                     print(f"      {line}")
             failures += 1
     verdict = "verde: puedes pushear" if failures == 0 else f"rojo: {failures} paso(s) fallan"
-    print(f"Resultado: {passed} ✓ · {failures} ✗ · {skipped} ⊘ — {verdict}")
+    print(f"Resultado: {passed} OK - {failures} FAIL - {skipped} omitidos - {verdict}")
     return 1 if failures else 0
 
 

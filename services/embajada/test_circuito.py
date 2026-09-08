@@ -131,4 +131,4 @@ def test_circuito_completo(tmp_path, capsys):
 
     # El registro de la valija deja constancia de qué se archivó y dónde.
     ledger = json.loads((repo / "state" / "valija-ledger.json").read_text(encoding="utf-8"))
-    assert ledger["delivered"]["circuito-001"]["path"].startswith("channels/open/")
+    assert ledger["delivered"]["circuito-001"]["path"].replace("\\", "/").startswith("channels/open/")

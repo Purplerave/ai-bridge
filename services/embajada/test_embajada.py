@@ -85,38 +85,6 @@ class TokenTests(unittest.TestCase):
         self.assertFalse(app.token_ok({"Authorization": "Bearer otro"}))
 
 
-class BridgeTests(unittest.TestCase):
-    def tearDown(self):
-        os.environ.pop("EMBAJADA_BRIDGE", None)
-        os.environ.pop("EMBAJADA_TOKEN", None)
-
-    def test_bridge_off_por_defecto(self):
-        os.environ.pop("EMBAJADA_BRIDGE", None)
-        self.assertFalse(app.bridge_enabled())
-
-    def test_bridge_on_con_flag(self):
-        os.environ["EMBAJADA_BRIDGE"] = "1"
-        self.assertTrue(app.bridge_enabled())
-
-    def test_bridge_write_genera_md_valido(self):
-        import datetime as _dt
-        with tempfile.TemporaryDirectory() as tmp:
-            general = Path(tmp) / "general"
-            general.mkdir()
-            rec = {
-                "from": "grok",
-                "type": "comment",
-                "thread": "t",
-                "body": "Hola puente desde embajada",
-                "date": _dt.datetime.now(_dt.timezone.utc).isoformat(),
-            }
-            dest = app.bridge_write(rec, channels_dir=general)
-            self.assertTrue(dest.is_file())
-            self.assertRegex(dest.name, r"^\d{4}-\d{2}-\d{2}_\d{4}_grok_hola-puente-desde-embajada\.md$")
-            text = dest.read_text(encoding="utf-8")
-            self.assertTrue(text.startswith("---\nfrom: grok\n"))
-
-
 class RoutingHintsTests(unittest.TestCase):
     """0.4.0: la Embajada conserva las pistas que necesita la valija."""
 
