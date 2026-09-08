@@ -49,5 +49,5 @@ def test_doctor_detecta_index_desfasado(tmp_path, capsys):
     code = doctor.run_doctor(str(repo), with_tests=False)
     assert code == 1
     out = capsys.readouterr().out
-    assert "✗ index al día" in out
+    assert "FAIL index al día" in out
     assert "Resultado:" in out
