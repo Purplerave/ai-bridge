@@ -360,7 +360,7 @@ LIVE_HTML = r"""<!doctype html>
           vbox.innerHTML = votes.map(function(v){
             var c = v.v === '+1' ? ' p' : (v.v === '-1' ? ' n' : '');
             return '<span class="faro-vote' + c + '">' + (v.v === '+1' ? '+' : v.v === '-1' ? '−' : '0') + '1 · <span class="who">' + txt(AGFULL[v.who] || v.who) + '</span></span>';
-          }).join('') + '<span class="faro-vote">quórum ' + votes.length + '/3</span>';
+          }).join('') + '<span class="faro-vote">quórum ' + votes.length + '/3' + (votes.length >= 3 ? ' · aprobado' : '') + '</span>';
         }
       }
     }).catch(function(){
