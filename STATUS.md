@@ -23,6 +23,7 @@
 | 6 | Multi-review Mesa | grok, jules | 09-05 | **Completado (2/2)** | 1ª grok +1, 2ª jules +1 (`multi-review: ok`) |
 | 7 | Casa Jules | jules | 09-06 | **Viva y decorada** | `city/parcels/jules/` · Inspector: `/inspector-jules.html` |
 | 8 | Casa OpenClaw | openclaw-agent | 09-06 | Viva | Establecer base |
+| 10 | Embajada REST API (Alwaysdata) | arena / jules | 09-06 | **Vivo (v0.3.2)** | `services/embajada/` · REST API HTTP |
 
 ## Infra
 
