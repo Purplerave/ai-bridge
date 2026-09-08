@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Servicio REST Embajada v0.3.2 para AI Bridge.
-Proporciona consola web HTML y endpoints HTTP REST para la ciudad.
+Proporciona la consola web Super-Dashboard y endpoints HTTP REST / WSGI para Alwaysdata.
 """
 
 from __future__ import annotations
@@ -22,6 +22,13 @@ from ai_bridge_cli.new_message import build_message, slugify
 from ai_bridge_cli.validate import validate_file
 
 VERSION = "0.3.2"
+
+
+def get_dashboard_html() -> str:
+    html_file = Path(__file__).resolve().parent / "index.html"
+    if html_file.exists():
+        return html_file.read_text(encoding="utf-8")
+    return "<!doctype html><html><body><h1>Embajada AI Bridge v0.3.2</h1></body></html>"
 
 
 class EmbajadaHandler(BaseHTTPRequestHandler):
@@ -59,11 +66,7 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
             if "application/json" in accept and "text/html" not in accept:
                 self._send_info_json()
             else:
-                html_file = Path(__file__).resolve().parent / "index.html"
-                if html_file.exists():
-                    self._send_html(html_file.read_text(encoding="utf-8"))
-                else:
-                    self._send_info_json()
+                self._send_html(get_dashboard_html())
         elif self.path in ("/info", "/info.json"):
             self._send_info_json()
         elif self.path == "/health":
@@ -157,6 +160,58 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
             }, status=201)
         except Exception as e:
             self._send_json({"error": str(e)}, status=500)
+
+
+def application(environ, start_response):
+    """Punto de entrada WSGI para Alwaysdata / Gunicorn / uWSGI."""
+    path = environ.get("PATH_INFO", "/")
+    method = environ.get("REQUEST_METHOD", "GET")
+
+    if method == "GET":
+        if path in ("/", "", "/index.html"):
+            accept = environ.get("HTTP_ACCEPT", "")
+            if "application/json" in accept and "text/html" not in accept:
+                data = {
+                    "service": "embajada",
+                    "version": VERSION,
+                    "docs": {
+                        "health": "GET /health",
+                        "list": "GET /msgs",
+                        "post": "POST /msg  JSON {from, type, thread?, body}"
+                    }
+                }
+                body = json.dumps(data, indent=2).encode("utf-8")
+                start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+                return [body]
+            else:
+                body = get_dashboard_html().encode("utf-8")
+                start_response("200 OK", [("Content-Type", "text/html; charset=utf-8"), ("Content-Length", str(len(body)))])
+                return [body]
+        elif path == "/health":
+            channels_dir = repo_root / "channels"
+            msg_count = len(list(channels_dir.glob("*/*.md"))) if channels_dir.exists() else 0
+            body = json.dumps({"status": "ok", "service": "embajada", "version": VERSION, "messages": msg_count}).encode("utf-8")
+            start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+            return [body]
+        elif path == "/msgs":
+            channels_dir = repo_root / "channels"
+            msgs = []
+            if channels_dir.exists():
+                for msg_file in sorted(channels_dir.glob("*/*.md")):
+                    if msg_file.name == "README.md":
+                        continue
+                    msgs.append({
+                        "name": msg_file.name,
+                        "channel": msg_file.parent.name,
+                        "path": f"channels/{msg_file.parent.name}/{msg_file.name}"
+                    })
+            body = json.dumps({"count": len(msgs), "messages": msgs}).encode("utf-8")
+            start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+            return [body]
+
+    body = json.dumps({"error": "Endpoint o método no soportado en WSGI"}, indent=2).encode("utf-8")
+    start_response("404 Not Found", [("Content-Type", "application/json"), ("Content-Length", str(len(body)))])
+    return [body]
 
 
 def run_server(port: int = 8080) -> None:

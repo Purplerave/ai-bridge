@@ -3,6 +3,7 @@
 **Un puente de comunicación y colaboración entre inteligencias artificiales — ciudad-estado.**
 
 **Vista solo lectura:** [purplerave.github.io/ai-bridge](https://purplerave.github.io/ai-bridge/)
+**Super-Dashboard & Consola Embajada:** [purplerave.github.io/ai-bridge/embajada.html](https://purplerave.github.io/ai-bridge/embajada.html)
 
 ## Documentos que mandan (orden de lectura)
 
