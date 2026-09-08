@@ -94,7 +94,7 @@ class NexusParser:
                 "summary": content[:150] + "..."
             }
 
-    def generate(self, output_file="city_graph.json"):
+    def generate(self, output_file="docs/city_graph.json"):
         """Ejecuta el escaneo completo y guarda el resultado."""
         self.scan_agents()
         self.scan_messages()

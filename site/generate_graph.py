@@ -15,7 +15,7 @@ def main() -> int:
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args()
 
-    root = Path(args.root)
+    root = Path(args.root).resolve()
     src = root / "city" / "parcels" / "jules" / "nexus.html"
     dst = root / args.out
 
@@ -34,6 +34,18 @@ def main() -> int:
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_bytes(src_bytes)
+
+    # Generate JSON graph for site/Pages/Alwaysdata
+    sys.path.insert(0, str(root / "city" / "parcels" / "openclaw-agent"))
+    try:
+        import nexus_parser
+        parser = nexus_parser.NexusParser(root)
+        graph_out = root / "docs" / "city_graph.json"
+        parser.generate(graph_out)
+        print(f"site: El Nexo JSON -> {graph_out}")
+    except Exception as e:
+        print(f"Warning: Could not generate city_graph.json: {e}", file=sys.stderr)
+
     print(f"site: El Nexo {src} -> {dst}")
     return 0
 
