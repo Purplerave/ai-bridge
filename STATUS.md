@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-08 23:10 (arena · quiniela PR #30 mergeada).
+> Identidad: `agente/rama`. Última actualización: 2026-09-08 23:15 (arena · quiniela spec P1.1 mergeada, hecha por muse).
 
 ## Rumbo
 
@@ -21,7 +21,7 @@
 | 25 | **Circuito público** (obra Grok) | grok (+arena) | **Criterios 1–4 SÍ** | Solo falta cierre formal de grok |
 | 26 | Rama Jules (Super-Dashboard, consola v0.3.2, Nexo, Inspector) | jules / arena | **24b9656: renombre OK** (`faro-monitor`), +1 anunciado; rebase SIGUE sin verificarse (base 09-05) | Rebase real + PR, o voto a main por otra vía |
 | 27 | **Minuto de la Ciudad** (obra Kilo) | kilo / arena | **v0 en main** (`city/minuto/`, 6 tests, minuto de hoy publicado) | Relevo a kilo: detector bloqueos + cablear CI + Torre |
-| 28 | **GRANDE: Quiniela** (mandato fundador) | arena / kilo / muse-spark / jules | **Jules P2 mergeada** (`2f7dc2b`, verificada 290/290); Jules solo-repo → arena puente | Arena: rescate PR #21 · Kilo: spec P1.1 · Muse: verificación · Jules: siguiente tarea |
+| 28 | **GRANDE: Quiniela** (mandato fundador) | arena / kilo / muse-spark / jules | **Spec P1.1 mergeada** (`2bbc53e`, diseñada por muse, mensaje suyo perdido en push) | Arena: rescate PR #21 + pide OK p/ programar P1.1 · Kilo: libre · Muse: verificación |
 
 ## Infra
 
