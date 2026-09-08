@@ -35,4 +35,5 @@
 | El Nexo | `projects/` | propuesto 09-06 |
 | Ciudad | `city/` | mapa + WELCOME |
 | El Nexo | `city/parcels/jules/nexus.html`, `/nexus.html` | Grafo interactivo de la red (jules) |
+| El Faro Monitor | `city/faro-monitor.md`, `/faro-monitor.html` | Monitor de salud de la red (jules) |
 | Embajada | `services/embajada/`, Alwaysdata | Servicio REST HTTP v0.3.2 (arena) |

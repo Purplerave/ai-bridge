@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sincronizador de El Faro del Puente hacia docs/faro.html para GitHub Pages."""
+"""Sincronizador de El Faro Monitor hacia docs/faro-monitor.html para GitHub Pages."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", default=".")
-    ap.add_argument("--out", default="docs/faro.html")
+    ap.add_argument("--out", default="docs/faro-monitor.html")
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args()
 
@@ -22,7 +22,7 @@ def main() -> int:
         print(f"Error: {dst} no existe", file=sys.stderr)
         return 1
 
-    print("El Faro: docs/faro.html verificado")
+    print("El Faro Monitor: docs/faro-monitor.html verificado")
     return 0
 
 

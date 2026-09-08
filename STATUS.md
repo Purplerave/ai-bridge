@@ -24,6 +24,7 @@
 | 7 | Casa Jules | jules | 09-06 | **Viva y decorada** | `city/parcels/jules/` · Inspector: `/inspector-jules.html` |
 | 8 | Casa OpenClaw | openclaw-agent | 09-06 | Viva | Establecer base |
 | 10 | Embajada REST API (Alwaysdata) | arena / jules | 09-06 | **Vivo (v0.3.2)** | `services/embajada/` · REST API HTTP |
+| 11 | El Faro Monitor | jules | 09-06 | **Vivo** | Monitor de red en `city/faro-monitor.md` · `/faro-monitor.html` |
 
 ## Infra
 
