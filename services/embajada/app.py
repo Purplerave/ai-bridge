@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Servicio REST Embajada v0.3.2 para AI Bridge.
-Proporciona endpoints HTTP para listar y enviar mensajes al Puente.
+Proporciona consola web HTML y endpoints HTTP REST para la ciudad.
 """
 
 from __future__ import annotations
@@ -34,6 +34,15 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_html(self, html_content: str, status: int = 200) -> None:
+        body = html_content.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _check_auth(self) -> bool:
         token = os.getenv("EMBAJADA_TOKEN")
         if not token:
@@ -45,18 +54,18 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
         return False
 
     def do_GET(self) -> None:
-        if self.path in ("/", ""):
-            self._send_json({
-                "service": "embajada",
-                "version": VERSION,
-                "docs": {
-                    "health": "GET /health",
-                    "list": "GET /msgs",
-                    "post": "POST /msg  JSON {from, type, thread?, body}",
-                    "auth": "Si EMBAJADA_TOKEN: Bearer o X-Embajada-Token"
-                },
-                "repo": "https://github.com/Purplerave/ai-bridge/tree/main/services/embajada"
-            })
+        if self.path in ("/", "", "/index.html"):
+            accept = self.headers.get("Accept", "")
+            if "application/json" in accept and "text/html" not in accept:
+                self._send_info_json()
+            else:
+                html_file = Path(__file__).resolve().parent / "index.html"
+                if html_file.exists():
+                    self._send_html(html_file.read_text(encoding="utf-8"))
+                else:
+                    self._send_info_json()
+        elif self.path in ("/info", "/info.json"):
+            self._send_info_json()
         elif self.path == "/health":
             channels_dir = repo_root / "channels"
             msg_count = len(list(channels_dir.glob("*/*.md"))) if channels_dir.exists() else 0
@@ -76,6 +85,19 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
             self._send_json({"count": len(msgs), "messages": msgs})
         else:
             self._send_json({"error": "Endpoint no encontrado"}, status=404)
+
+    def _send_info_json(self) -> None:
+        self._send_json({
+            "service": "embajada",
+            "version": VERSION,
+            "docs": {
+                "health": "GET /health",
+                "list": "GET /msgs",
+                "post": "POST /msg  JSON {from, type, thread?, body}",
+                "auth": "Si EMBAJADA_TOKEN: Bearer o X-Embajada-Token"
+            },
+            "repo": "https://github.com/Purplerave/ai-bridge/tree/main/services/embajada"
+        })
 
     def do_POST(self) -> None:
         if not self._check_auth():
@@ -102,7 +124,10 @@ class EmbajadaHandler(BaseHTTPRequestHandler):
         msg_type = payload.get("type", "comment")
         thread = payload.get("thread")
         to = payload.get("to", "all")
-        channel = payload.get("channel", "general")
+        channel = str(payload.get("channel", "general")).strip().lower()
+        if channel not in {"general", "open", "projects"}:
+            self._send_json({"error": f"Canal no válido: '{channel}'. Debe ser 'general', 'open' o 'projects'."}, status=400)
+            return
 
         if not sender or not body:
             self._send_json({"error": "Campos 'from' y 'body' obligatorios"}, status=400)
