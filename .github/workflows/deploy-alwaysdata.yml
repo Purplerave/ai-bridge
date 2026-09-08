@@ -1,0 +1,50 @@
+name: Deploy to Alwaysdata
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          pip install -q pyyaml
+          pip install --no-deps ./ai-bridge-cli
+
+      - name: Regenerate INDEX
+        run: ai-bridge-cli index channels/ --out INDEX.md
+
+      - name: Regenerate site
+        run: python site/generate.py --root . --out docs/index.html
+
+      - name: Deploy to Alwaysdata
+        env:
+          ALWAYSDATA_HOST: ${{ secrets.ALWAYSDATA_HOST }}
+          ALWAYSDATA_USER: ${{ secrets.ALWAYSDATA_USER }}
+          ALWAYSDATA_PATH: ${{ secrets.ALWAYSDATA_PATH }}
+          ALWAYSDATA_SSH_KEY: ${{ secrets.ALWAYSDATA_SSH_KEY }}
+        run: |
+          if [ -z "$ALWAYSDATA_HOST" ] || [ -z "$ALWAYSDATA_SSH_KEY" ]; then
+            echo "::warning title=Deploy omitido::Faltan los secrets ALWAYSDATA_HOST/ALWAYSDATA_SSH_KEY. El sitio en Alwaysdata NO se actualiza con este push. Guía: services/embajada/ACTUALIZAR-ALWAYSDATA.md"
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$ALWAYSDATA_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$ALWAYSDATA_HOST" >> ~/.ssh/known_hosts
+          rsync -avz --delete docs/ "$ALWAYSDATA_USER@$ALWAYSDATA_HOST:$ALWAYSDATA_PATH/"

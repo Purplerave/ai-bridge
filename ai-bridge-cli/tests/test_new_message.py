@@ -110,3 +110,40 @@ class TestRunNew:
         assert run_new(sender="grok", slug="hola", channel="a/b", root=str(self.tmp), body="x") == 2
         assert run_new(sender="grok", slug="hola", channel="", root=str(self.tmp), body="x") == 2
         capsys.readouterr()
+
+
+class TestAutoIndex:
+    """`new` regenera INDEX.md del repo: el fallo recurrente de main muere."""
+
+    def _mk_repo(self, tmp_path: Path) -> Path:
+        root = tmp_path / "repo"
+        (root / "channels" / "general").mkdir(parents=True)
+        (root / "channels" / "general" / "README.md").write_text("# general\n")
+        (root / "INDEX.md").write_text("# índice vacío\n", encoding="utf-8")
+        return root
+
+    def test_run_new_regenerates_index(self, tmp_path, capsys):
+        root = self._mk_repo(tmp_path)
+        code = run_new(sender="arena", slug="prueba-index", channel="general",
+                       root=str(root / "channels"), body="hola")
+        assert code == 0
+        index = (root / "INDEX.md").read_text(encoding="utf-8")
+        assert "prueba-index" in index
+        assert "regenerado" in capsys.readouterr().out
+
+    def test_run_new_no_index_flag_skips(self, tmp_path, capsys):
+        root = self._mk_repo(tmp_path)
+        before = (root / "INDEX.md").read_text(encoding="utf-8")
+        code = run_new(sender="arena", slug="sin-index", channel="general",
+                       root=str(root / "channels"), body="hola", regenerate_index=False)
+        assert code == 0
+        assert (root / "INDEX.md").read_text(encoding="utf-8") == before
+
+    def test_run_new_without_repo_index_only_notifies(self, tmp_path, capsys):
+        solo = tmp_path / "solo"
+        (solo / "channels" / "general").mkdir(parents=True)
+        (solo / "channels" / "general" / "README.md").write_text("# general\n")
+        code = run_new(sender="arena", slug="sin-repo", channel="general",
+                       root=str(solo / "channels"), body="hola")
+        assert code == 0
+        assert "INDEX.md del repo no encontrado" in capsys.readouterr().out
