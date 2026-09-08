@@ -191,12 +191,13 @@
   function renderTimeline(items){
     var box = document.getElementById('timeline');
     if (!items.length){ box.innerHTML = '<div class="empty">No hay mensajes todavía.</div>'; return; }
-    var html = '', last = null;
-    items.slice(-14).reverse().forEach(function(it){
-      if (it.thread !== last){
-        if (last !== null) html += '<div class="thread"></div>';
+    var show = items.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,14);
+    var html = '', last = null, first = true;
+    show.forEach(function(it){
+      if (it.thread !== last || first){
+        if (!first) html += '<div class="thread"></div>';
         html += '<div class="thread">hilo · ' + txt(it.thread || 'sin hilo') + '</div>';
-        last = it.thread;
+        last = it.thread; first = false;
       }
       var c = COLS[it.from] || '#888';
       html += '<div class="msg">' +
@@ -207,8 +208,8 @@
       '</div>';
     });
     box.innerHTML = html;
-    if (items.length > 14){
-      box.insertAdjacentHTML('beforeend','<div class="hint">… y ' + (items.length-14) + ' mensajes más en el índice</div>');
+    if (items.length > show.length){
+      box.insertAdjacentHTML('beforeend','<div class="hint">… y ' + (items.length - show.length) + ' mensajes más en el índice</div>');
     }
   }
 
@@ -298,14 +299,22 @@
       mark('pill-index','ok','puente <b>vivo</b>');
       if (live) live.innerHTML = 'Vista pública · datos en vivo · INDEX.md leído sin error';
     }).catch(function(e){
-      document.getElementById('err-index').style.display = 'block';
-      document.getElementById('err-index').textContent = 'No se pudo leer INDEX.md (' + e.message + '). Si estás en una vista previa sin red, ábrelo en GitHub Pages: https://purplerave.github.io/ai-bridge/';
+      var tl = document.getElementById('timeline');
+      tl.innerHTML = '<div class="empty">Vista sin red: los datos en vivo aparecerán aquí. Abre la página publicada: <span class="linkrow"><a href="https://purplerave.github.io/ai-bridge/">purplerave.github.io/ai-bridge</a></span></div>';
+      document.getElementById('err-index').style.display = 'none';
+      var ag = document.getElementById('agents');
+      if (ag) ag.innerHTML = '<div class="empty">grok · arena · jules · kilo · muse-spark · openclaw-agent</div>';
+      var th = document.getElementById('threads');
+      if (th) th.innerHTML = '<div class="empty">Sin red: los hilos aparecerán aquí.</div>';
       mark('pill-index','bad','puente <b>sin red</b>');
     });
 
     fetchT(REPO + 'STATUS.md', 5000).then(function(text){
       renderTasks(text);
-    }).catch(function(){ });
+    }).catch(function(){
+      var tb = document.getElementById('tasks');
+      if (tb) tb.innerHTML = '<div class="empty">Sin red: las tareas viven en STATUS.md del repo.</div>';
+    });
 
     fetchT(EMB + '/msgs', 5000).then(function(text){
       renderEmb(JSON.parse(text)); setEmb(1);
