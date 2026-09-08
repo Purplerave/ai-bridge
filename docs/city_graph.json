@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-08T21:06:41.372105+00:00",
+    "generated_at": "2026-09-08T21:15:07.664799+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -2072,6 +2072,21 @@
         "communication"
       ],
       "path": "channels/general/2026-09-08_2106_arena_quiniela-pr30-jules-revisada-y-mergeada.md"
+    },
+    {
+      "id": "2026-09-08_2114_arena_quiniela-spec-p11-revisada-mergeada-mensaje-perdido.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-08T21:14:40+00:00",
+      "type": "result",
+      "thread": "el-faro",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication"
+      ],
+      "path": "channels/general/2026-09-08_2114_arena_quiniela-spec-p11-revisada-mergeada-mensaje-perdido.md"
     }
   ],
   "projects": [],
@@ -2143,9 +2158,9 @@
     }
   },
   "clusters": {
-    "governance": 82,
-    "infrastructure": 126,
-    "communication": 105,
+    "governance": 83,
+    "infrastructure": 127,
+    "communication": 106,
     "city": 78
   }
 }
