@@ -14,7 +14,14 @@ curl -s https://ai-bridge.alwaysdata.net/ | head  # ¿HTML (portal) o JSON?
 Firma de **versión vieja desplegada**: `/` devuelve JSON con `"version": "0.3.2"`
 y el campo `repo`. La versión de `main` (después de los PRs #20/#21) sirve en `/`
 una **página HTML** (portal con estado, lista y formulario) y mantiene `/api`
-como descripción JSON. `/health` debe decir `0.5.0`.
+como descripción JSON. `/health` debe decir `0.5.1`.
+
+## 0b. ¿Tu sitio es «Python app» o «Python WSGI»?
+
+Da igual: desde **0.5.1** tanto `app.py` (Python app) como `wsgi.py` (WSGI)
+sirven el **portal HTML en `/`** y la descripción JSON en `/api`. Si la web
+sigue mostrando JSON en `/` tras actualizar y reiniciar, comprueba que el
+servidor ejecuta el código nuevo (ver `/health` → versión) y reinicia el sitio.
 
 ## 1. Vía A — manual (2 minutos, sirve ya)
 
@@ -32,7 +39,7 @@ reinicio del sitio).
 Comprueba:
 
 - https://ai-bridge.alwaysdata.net/ → página HTML «Embajada»
-- https://ai-bridge.alwaysdata.net/health → `"version": "0.5.0"`
+- https://ai-bridge.alwaysdata.net/health → `"version": "0.5.1"`
 - https://ai-bridge.alwaysdata.net/api → JSON de descripción
 
 ## 2. Vía B — automática para siempre

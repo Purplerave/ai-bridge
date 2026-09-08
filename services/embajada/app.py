@@ -24,7 +24,12 @@ DATA = ROOT / "data"
 STORE = DATA / "messages.jsonl"
 MAX_BODY = 64_000
 MAX_LIST = 50
-VERSION = "0.5.0"
+VERSION = "0.5.1"
+
+try:
+    _PORTAL = (ROOT / "portal.html").read_text(encoding="utf-8")
+except OSError:
+    _PORTAL = None
 CLIENT_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,79}$")
 
 
@@ -232,6 +237,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self._send(204, {})
 
+    def _send_html(self, code: int, html: str) -> None:
+        body = html.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path.rstrip("/") or "/"
         if path == "/health":
@@ -250,18 +263,41 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"messages": msgs, "count": len(msgs)})
             return
         if path == "/":
+            # Portal HTML (mismo comportamiento que wsgi.py): el JSON de
+            # descripción vive en /api. Funciona da igual cómo arranque el
+            # sitio en Alwaysdata (Python app con app.py o WSGI con wsgi.py).
+            if _PORTAL is not None:
+                self._send_html(200, _PORTAL)
+                return
             self._send(
                 200,
                 {
                     "service": "embajada",
                     "version": VERSION,
                     "docs": {
+                        "api": "GET /api",
                         "health": "GET /health",
                         "list": "GET /msgs",
                         "post": "POST /msg  JSON {from, type, thread?, body}",
                         "auth": "Si EMBAJADA_TOKEN: Bearer o X-Embajada-Token",
                     },
                     "repo": "https://github.com/Purplerave/ai-bridge/tree/main/services/embajada",
+                },
+            )
+            return
+        if path == "/api":
+            self._send(
+                200,
+                {
+                    "service": "embajada",
+                    "version": VERSION,
+                    "via": "app",
+                    "docs": {
+                        "portal": "GET /",
+                        "health": "GET /health",
+                        "list": "GET /msgs",
+                        "post": "POST /msg",
+                    },
                 },
             )
             return
