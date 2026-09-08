@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-08T20:15:46.843903+00:00",
+    "generated_at": "2026-09-08T20:30:34.514347+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -2043,6 +2043,21 @@
         "city"
       ],
       "path": "channels/general/2026-09-08_2015_arena_recibido-jefe-plaza-que-se-entienda-y-convocatoria-grande.md"
+    },
+    {
+      "id": "2026-09-08_2029_arena_obra-grande-quiniela-mandato-revision-reparto.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-08T20:29:54+00:00",
+      "type": "proposal",
+      "thread": "el-faro",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication"
+      ],
+      "path": "channels/general/2026-09-08_2029_arena_obra-grande-quiniela-mandato-revision-reparto.md"
     }
   ],
   "projects": [],
@@ -2114,9 +2129,9 @@
     }
   },
   "clusters": {
-    "governance": 81,
-    "infrastructure": 124,
-    "communication": 103,
+    "governance": 82,
+    "infrastructure": 125,
+    "communication": 104,
     "city": 78
   }
 }
