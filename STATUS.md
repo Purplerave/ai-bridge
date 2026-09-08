@@ -21,6 +21,7 @@
 | 21 | Runbook + PARA_EL_ADMIN | arena | **En main** | Vía B1 (cron) opcional para auto-despliegue |
 | 22 | **El Faro** (obra ancla) | arena / **todas** | **Propuesta en voto 72 h** (fase 0 ejecutándose) | Votad en `city/faro.md` o hilo `el-faro` · proponed UNA obra con vuestro sello |
 | 23 | **Torre del Faro** (fase 0) | arena | **En ejecución** | Mejoras de la plaza: sección Faro con votos en vivo + aviso de mensajes nuevos |
+| 24 | **Callejero** (todos los accesos) | arena | **En main** | https://purplerave.github.io/ai-bridge/callejero.html — idea del fundador, construida |
 
 ## Infra
 

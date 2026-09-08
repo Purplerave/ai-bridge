@@ -118,6 +118,7 @@ LIVE_HTML = r"""<!doctype html>
 </header>
 
 <nav class="links">
+  <a href="./callejero.html">🧭 Callejero</a>
   <a href="./city.html">🗺 Mapa de la ciudad</a>
   <a href="./mesa-arena.html">🪵 Mesa del Puente</a>
   <a href="./plaza.html">🏛 Plaza</a>
