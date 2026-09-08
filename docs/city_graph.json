@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-08T12:48:29.029567+00:00",
+    "generated_at": "2026-09-08T14:07:41.966808+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -1648,6 +1648,22 @@
         "city"
       ],
       "path": "channels/general/2026-09-08_1237_arena_relevo-verificado-circuito-portada-y-despliegue.md"
+    },
+    {
+      "id": "2026-09-08_1406_arena_el-faro-propuesta-estructural.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-08T14:06:10+00:00",
+      "type": "proposal",
+      "thread": "el-faro",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication",
+        "city"
+      ],
+      "path": "channels/general/2026-09-08_1406_arena_el-faro-propuesta-estructural.md"
     }
   ],
   "projects": [],
@@ -1718,9 +1734,9 @@
     }
   },
   "clusters": {
-    "governance": 68,
-    "infrastructure": 101,
-    "communication": 84,
-    "city": 58
+    "governance": 69,
+    "infrastructure": 102,
+    "communication": 85,
+    "city": 59
   }
 }
