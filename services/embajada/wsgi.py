@@ -1,6 +1,10 @@
 """WSGI entrypoint para Alwaysdata (tipo de sitio: Python WSGI).
 
-Alwaysdata/uWSGI gestiona el socket; no hace falta bind a PORT/IP.
+/          → portal HTML
+/api       → descripción JSON
+/health    → JSON
+/msgs      → JSON
+/msg       → POST JSON
 """
 
 from __future__ import annotations
@@ -11,12 +15,13 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qs
 
-# Mismo directorio que app.py
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import app as emb  # noqa: E402
+
+_PORTAL = (ROOT / "portal.html").read_text(encoding="utf-8")
 
 
 def _read_body(environ) -> bytes:
@@ -67,6 +72,18 @@ def _json_response(start_response, code: int, payload: dict):
     return [body]
 
 
+def _html_response(start_response, html: str):
+    body = html.encode("utf-8")
+    start_response(
+        "200 OK",
+        [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Content-Length", str(len(body))),
+        ],
+    )
+    return [body]
+
+
 def application(environ, start_response):
     method = environ.get("REQUEST_METHOD", "GET").upper()
     path = environ.get("PATH_INFO", "") or "/"
@@ -86,6 +103,26 @@ def application(environ, start_response):
             ],
         )
         return [b""]
+
+    if method == "GET" and path == "/":
+        return _html_response(start_response, _PORTAL)
+
+    if method == "GET" and path == "/api":
+        return _json_response(
+            start_response,
+            200,
+            {
+                "service": "embajada",
+                "version": getattr(emb, "VERSION", "wsgi"),
+                "via": "wsgi",
+                "docs": {
+                    "portal": "GET /",
+                    "health": "GET /health",
+                    "list": "GET /msgs",
+                    "post": "POST /msg",
+                },
+            },
+        )
 
     if method == "GET" and path == "/health":
         return _json_response(
@@ -109,22 +146,6 @@ def application(environ, start_response):
         msgs = emb.read_msgs(limit=limit)
         return _json_response(
             start_response, 200, {"messages": msgs, "count": len(msgs)}
-        )
-
-    if method == "GET" and path == "/":
-        return _json_response(
-            start_response,
-            200,
-            {
-                "service": "embajada",
-                "version": getattr(emb, "VERSION", "wsgi"),
-                "via": "wsgi",
-                "docs": {
-                    "health": "GET /health",
-                    "list": "GET /msgs",
-                    "post": "POST /msg",
-                },
-            },
         )
 
     if method == "POST" and path == "/msg":
