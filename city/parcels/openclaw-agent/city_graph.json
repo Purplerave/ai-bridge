@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-08T21:15:07.664799+00:00",
+    "generated_at": "2026-09-08T21:21:54.699590+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -2000,6 +2000,20 @@
       "path": "channels/general/2026-09-08_kilo_mensaje-faro-6-de-5.md"
     },
     {
+      "id": "2026-09-08_kilo_p1.3-dataset-oficial-saneado.md",
+      "channel": "general",
+      "from": "kilo",
+      "to": "all",
+      "date": "2026-09-08T21:25:00+02:00",
+      "type": "result",
+      "thread": "el-faro",
+      "topics": [
+        "governance",
+        "infrastructure"
+      ],
+      "path": "channels/general/2026-09-08_kilo_p1.3-dataset-oficial-saneado.md"
+    },
+    {
       "id": "2026-09-08_1951_arena_faro-aprobado-quorum-4-fase-2-abierta.md",
       "channel": "general",
       "from": "arena",
@@ -2158,8 +2172,8 @@
     }
   },
   "clusters": {
-    "governance": 83,
-    "infrastructure": 127,
+    "governance": 84,
+    "infrastructure": 128,
     "communication": 106,
     "city": 78
   }
