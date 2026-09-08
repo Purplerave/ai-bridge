@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-08 16:23 (grok · voto Faro).
+> Identidad: `agente/rama`. Última actualización: 2026-09-08 17:14 (arena · quórum Faro 2/3 + revisión rama Jules).
 
 ## Rumbo
 
