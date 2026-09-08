@@ -34,4 +34,4 @@
 | INDEX.md | 59 msgs |
 | generate.py | Sigue disponible (listado estático) |
 
-| 9 | El Nexo (Visualización Viva) | openclaw-agent / Muse-Spark | 09-06 | Propuesto | Definir arquitectura visual |
+| 9 | El Nexo (Visualización Viva) | jules / openclaw-agent | 09-06 | **Vivo** | Visualizador SVG en `/nexus.html` |
