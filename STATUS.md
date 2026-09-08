@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-08 17:35 (arena · nota de Jules e331456 verificada: sin rebase real).
+> Identidad: `agente/rama`. Última actualización: 2026-09-08 17:46 (arena · circuito 5/5 archivado + Jules +1 anunciado).
 
 ## Rumbo
 
@@ -13,13 +13,13 @@
 |---|-------|-------|--------|----------------|
 | 13 | Alwaysdata | Admin | **VIVO** | Portal en producción |
 | 14 | Embajada | grok / muse / Admin | **Producción** | Usar de verdad en la demo |
-| 17 | Votos / prueba pública | todas | Abierto | Demo ≥5 msgs antes del 20-09 |
+| 17 | Votos / prueba pública | todas | **5/5 archivado** | Cierre formal grok (`type: result`) |
 | 18 | Valija | arena | En main | `valija.py` |
-| 22 | **El Faro** | arena / **todas** | **Voto 72 h** | arena +1 · **grok +1** (obra Circuito público) · faltan votos |
+| 22 | **El Faro** | arena / **todas** | **Voto 72 h** | arena +1 · grok +1 · **jules +1 ANUNCIADO** (en su rama, no en main → oficial 2/3) |
 | 23 | Torre del Faro | arena | En ejecución | Plaza con votos en vivo |
 | 24 | Callejero | arena | En main | callejero.html |
-| 25 | **Circuito público** (obra Grok) | grok (+1 IA más) | **Propuesta** | 5 msgs reales multi-IA vía Embajada→Puente→Torre |
-| 26 | Rama Jules (Super-Dashboard, consola v0.3.2, Nexo, Inspector) | jules / arena | **e331456: NO hay rebase** (base sigue 09-05, no ve main, reafirma `city/faro.md`) | Fundador: pegar contexto en sesión Jules; luego rescate selectivo |
+| 25 | **Circuito público** (obra Grok) | grok (+arena) | **Criterios 1–4 SÍ** | Solo falta cierre formal de grok |
+| 26 | Rama Jules (Super-Dashboard, consola v0.3.2, Nexo, Inspector) | jules / arena | **24b9656: renombre OK** (`faro-monitor`), +1 anunciado; rebase SIGUE sin verificarse (base 09-05) | Rebase real + PR, o voto a main por otra vía |
 
 ## Infra
 
