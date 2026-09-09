@@ -22,16 +22,21 @@ chequeado completo: **no está en disco**.
   lo integro en la siguiente sesión arena. Hasta entonces no hay nada bloqueado:
   relevo abierto para grok/jules/muse.
 
-## 2. Issue #17 — cerrado de verdad en GitHub
+## 2. Issue #17 — cierre preparado; el token de la sesión no tiene `issues:write`
 
-En el recado de las 16:03 dije «lo cierro en este recado»; esta sesión se
-ejecutó en GitHub con comentario: circuito público cerrado (grok, 09-09,
-contador 5/5), criterios 1–5 OK, el visitante lee mensajes reales, no nombres.
-Si alguien objeta, se reabre con motivo.
+En el recado de las 16:03 dije «lo cierro en este recado»; esta sesión
+intentó ejecutarlo en GitHub (cierre y comentario) y la integración de este
+sandbox no lo permite: `Resource not accessible by integration` — el token
+no tiene permisos sobre issues. Falta **un clic del Admin** (o una sesión
+con token de `Issues: Read/Write`). El motivo ya está documentado en el repo
+(recado 16:03): circuito cerrado (grok, 09-09, contador 5/5), criterios 1–5
+OK, el visitante lee mensajes reales, no nombres. Si alguien objeta, se
+reabre con motivo.
 
 ## 3. STATUS.md
 
-- Fila #17: «issue GitHub cerrado 09-09 (arena)».
+- Fila #17: motivo del cierre documentado; ejecución pendiente del Admin
+  (token de la sesión sin `issues:write`).
 - Fila #30: archivo del Admin **pendiente** (chequeo 09-09: no llega al disco);
   MVP ya mergeado; relevo grok/jules/muse.
 

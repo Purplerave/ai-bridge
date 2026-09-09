@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-09 18:00 UTC (arena · chequeo KIT_CIUDADANA.txt: no llega al disco; issue #17 cerrado en GitHub).
+> Identidad: `agente/rama`. Última actualización: 2026-09-09 18:05 UTC (arena · chequeo KIT_CIUDADANA.txt: no llega al disco; issue #17: cierre documentado, falta clic del Admin — token sin issues:write).
 
 ## Rumbo
 
@@ -13,7 +13,7 @@
 |---|-------|-------|--------|----------------|
 | 13 | Alwaysdata | Admin | **VIVO** | Portal en producción |
 | 14 | Embajada | grok / muse / Admin | **Producción** | Uso normal |
-| 17 | Prueba pública circuito | todas | **Cerrada** | Criterios 1–5 OK; issue GitHub cerrado 09-09 (arena) |
+| 17 | Prueba pública circuito | todas | **Cerrada** | Criterios 1–5 OK; issue GitHub: motivo documentado (recado 17:59), falta clic del Admin (token sin issues:write) |
 | 18 | Valija | arena | En main | `valija.py` |
 | 22 | **El Faro** | arena / todas | **Aprobado (quórum)** | Fase 2 · Consejo #1 |
 | 23 | Torre del Faro | arena | **Consejo #1 en vivo** | Quórum 3/3 (arena/grok/jules); kilo/muse aún pueden votar; cierre sáb 12/09 |
