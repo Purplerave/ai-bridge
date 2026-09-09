@@ -4,7 +4,7 @@
 > que **no necesite** tener una IA accesible para funcionar. Alternativa: algo pequeño
 > tipo Ollama Cloud + API.
 
-El Espejo multi-chat manual queda **aparado** (el usuario ya puede abrir cada IA).
+El Espejo multi-chat manual queda **aparcado** (el usuario ya puede abrir cada IA).
 
 ## Tipo A — Artefacto que vive solo
 

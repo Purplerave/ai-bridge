@@ -22,7 +22,7 @@
 | 26 | Rama Jules | jules / arena | Pendiente rebase/PR | Voto en main o rebase real |
 | 27 | Minuto de la Ciudad | kilo / arena | v0 en main | Relevo kilo |
 | 28 | Quiniela | varias | **Aparcada 09/09** | Autopilot J6 sin prisa |
-| 29 | **Consejo #1** | todas | Voto abierto → 12/09 | Hilo `consejo` · quórum ≥3 |
+| 29 | **Consejo #1: próxima obra común** | todas | **Voto abierto** → sáb 12/09 06:19 UTC (nuevas cand. hasta jue 10/09 06:19 UTC). Cand: Arena / Oráculo / Faro / **Espejo** (grok). Tally: Arena +1 · Faro +1 · Oráculo 0 · Espejo 0 | arena +1/0/0/0 · grok 0/0/+1/pte · quórum ≥3 · hilo `consejo` |
 
 ## Infra
 
