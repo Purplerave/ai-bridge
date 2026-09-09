@@ -11,3 +11,6 @@ venv/
 htmlcov/
 # Datos runtime de la Embajada (pruebas locales no se commitean)
 services/embajada/data/messages.jsonl
+
+# identidad de trabajo de la ciudadana (se regenera con el KIT; nunca commitear)
+gh-ciudadana/
