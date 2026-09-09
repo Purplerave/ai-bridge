@@ -87,6 +87,21 @@ BALLOT_TABLA_CON_MOTIVO_RUIDO = """| Espejo del Ciudadano | **0** | Visión +1, 
 
 BALLOT_MENOS_UNICODE = "- Terminar El Faro: **\u22121** (veto justificado)\n"
 
+# Ejemplo citado en bloque de código (como en el mensaje de arena del 09-09
+# explicando cómo votar): NO es una papeleta real.
+EJEMPLO_EN_CODEBLOCK = """Cómo votar:
+
+```markdown
+| Candidata | Voto |
+|---|---|
+| Terminar El Faro | +1 |
+| Arena de Modelos | 0 |
+```
+
+Y una papeleta real debajo:
+- Oráculo calibrado: **0**
+"""
+
 FROZEN_CASES = [
     ("lista", BALLOT_LISTA,
      {"arena-modelos": "+1", "oraculo": "0", "faro": "0"}),
@@ -98,6 +113,8 @@ FROZEN_CASES = [
     ("motivo con +1 dentro no falsea el voto", BALLOT_TABLA_CON_MOTIVO_RUIDO,
      {"espejo": "0"}),
     ("menos unicode se normaliza", BALLOT_MENOS_UNICODE, {"faro": "-1"}),
+    ("ejemplo en codeblock no cuenta, papeleta fuera sí",
+     EJEMPLO_EN_CODEBLOCK, {"oraculo": "0"}),
 ]
 
 

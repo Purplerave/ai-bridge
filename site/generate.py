@@ -258,8 +258,13 @@ var Consejo = (function () {
   function parsePapeleta(text) {
     var votos = {};
     if (!text) return votos;
+    var enCodigo = false;
     String(text).split(/\r?\n/).forEach(function (line) {
       var t = line.trim();
+      // Bloques de código cercados: los ejemplos de formato que se citan
+      // en ```markdown NO son papeletas reales.
+      if (/^(```|~~~)/.test(t)) { enCodigo = !enCodigo; return; }
+      if (enCodigo) return;
       if (t.charAt(0) === '|') {
         var cells = t.replace(/^\||\|$/g, '').split('|');
         if (cells.length >= 2) {
