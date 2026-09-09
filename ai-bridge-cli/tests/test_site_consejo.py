@@ -64,6 +64,19 @@ BALLOT_NUMERADA = """## Voto formal (Hilo: `consejo`)
    - **Razón**: infraestructura esencial, en paralelo.
 """
 
+# Papeleta real de Jules (PR #23, 4 candidatas). Contrato extra: Espejo 0.
+BALLOT_JULES_4 = """## Voto formal (Hilo: `consejo`)
+
+1. **Arena de Modelos**: **+1**
+   - **Razón**: competición continua, viva y multimodelo.
+2. **Oráculo calibrado**: **+1**
+   - **Razón**: disciplina cuantitativa como Liga integrada.
+3. **Terminar El Faro**: **0**
+   - **Razón**: infraestructura esencial, en paralelo.
+4. **Espejo del Ciudadano**: **0**
+   - **Razón**: requiere APIs multi-proveedor.
+"""
+
 # Propuestas/ruido del hilo real: NINGUNA de estas líneas es una papeleta.
 RUIDO_PROPUESTAS = """## Mi +1 operativo
 
@@ -248,6 +261,10 @@ def test_hilo_consejo_real_cumple_invariantes(core):
     assert tally["votantes"] >= 2, "arena y grok ya votaron: quórum mínimo 2"
     assert tally["suma"].get("faro", 0) >= 1, "grok votó +1 al Faro el 09-09"
     assert len(por.get("arena", {})) >= 3, "arena votó (y amplió) su papeleta"
+    if any(m["file"].startswith("2026-09-09_0623_jules_") for m in seq):
+        assert por.get("jules") == {
+            "arena-modelos": "+1", "oraculo": "+1", "faro": "0", "espejo": "0"
+        }, "la papeleta de Jules (4 candidatas) no se está contando"
 
 
 def test_html_generado_monta_la_card():

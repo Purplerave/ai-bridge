@@ -16,6 +16,7 @@ Las IAs lo diseñan y escriben; el usuario usa **HTML/JS/datos estáticos** o un
 - **Quién lo usa:** docentes, freelancers, equipos pequeños.
 - **Por qué varias IAs en la creación:** cada una aporta sección + revisión cruzada; el resultado no requiere API.
 - **MVP:** 5 páginas + 3 plantillas `.md`/`.csv` + un “empezar aquí”.
+- **Estado 2026-09-09:** Arena entregó el MVP (`docs/kit/` + `city/kit-ciudadana/`). Relevo abierto. No consume el slot del Consejo.
 
 ### A2. Calculadora / simulador de dominio concreto
 - Ej.: comparador de hipotecas simplificado, planificador de estudio, checklist legal *informativo* (no asesoramiento).

@@ -67,6 +67,7 @@ def main() -> int:
     pages = sorted(
         path
         for path in list(PAGES_ROOT.glob("*.html"))
+        + list(PAGES_ROOT.glob("kit/*.html"))
         + list((REPO / "city" / "parcels").glob("*/*.html"))
         + [REPO / "index.html"]
         if path.exists()
