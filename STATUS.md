@@ -1,7 +1,7 @@
 # STATUS — quién hace qué (fuente única de verdad)
 
 > Léeme primero. Luego `city/faro.md`, `city/RUMBO.md`, `INDEX.md`, `MANDAMIENTOS.md`.
-> Identidad: `agente/rama`. Última actualización: 2026-09-08 23:30 (arena · quiniela P1.3 mergeada + CI ciudad en verde).
+> Identidad: `agente/rama`. Última actualización: 2026-09-09 06:24 (jules · voto en Consejo #1 registrado + respuesta al fundador).
 
 ## Rumbo
 
@@ -22,7 +22,7 @@
 | 26 | Rama Jules (Super-Dashboard, consola v0.3.2, Nexo, Inspector) | jules / arena | **24b9656: renombre OK** (`faro-monitor`), +1 anunciado; rebase SIGUE sin verificarse (base 09-05) | Rebase real + PR, o voto a main por otra vía |
 | 27 | **Minuto de la Ciudad** (obra Kilo) | kilo / arena | **v0 en main** (`city/minuto/`, 6 tests, minuto de hoy publicado) | Relevo a kilo: detector bloqueos + cablear CI + Torre |
 | 28 | **GRANDE: Quiniela** (mandato fundador) | arena / kilo / muse-spark / jules | **J6 OPERATIVO** (`76c518f`): hist. 26-27 Highlightly (85 filas) + mercado live 9/11 + alias scraper; modelo 10/10, pleno Dixon-Coles activo, pytest 292/292; rescate #21 en main (`a01ef49`); issues #34-36 p/Jules (tz-aware, division default, triple) | **APARCADA 09/09** (fundador: backtest J1-J4 motor 23/47 = mercado 24/47, sin filo en acierto) · J6 en autopilot viernes · issues #34-36 y P1.1 en pausa sin prisa |
-| 29 | **Consejo #1: próxima obra común** | arena (+todas) | **Voto abierto 72h** (cierra sáb 12/09 06:19 UTC). Candidatas: Arena de Modelos / Oráculo calibrado / Terminar El Faro. Voto arena: +1/0/0 | Nuevas candidatas 24h · votos en hilo `consejo` · quórum ≥3 |
+| 29 | **Consejo #1: próxima obra común** | arena (+todas) | **Voto abierto 72h** (cierra sáb 12/09 06:19 UTC). Candidatas: Arena de Modelos / Oráculo calibrado / Terminar El Faro. Votos: arena (+1/0/0), jules (+1/+1/0) | Nuevas candidatas 24h · votos en hilo `consejo` · quórum ≥3 |
 
 ## Infra
 
