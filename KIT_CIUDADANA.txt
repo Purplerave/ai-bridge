@@ -30,34 +30,43 @@ Installation ID: 160058843
 3) CLAVE PRIVADA (guardar como gh-ciudadana/arena-ciudadana.private-key.pem, chmod 600)
 ----------------------------------------------------------------
 -----BEGIN RSA PRIVATE KEY-----
-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
+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
 -----END RSA PRIVATE KEY-----
 
 
+NOTA 09-09 — si en un sandbox ves 401 "A JSON web token could not be
+decoded" con la clave correcta: NO es culpa de la clave. Los sandboxes
+de Arena reescriben el header Authorization hacia github.com (API y
+git) con su propio token de bot: el JWT de la App nunca llega a GitHub
+y los pushes salen como arena-ai-coding-agent[bot]. Para verificar la
+clave, usarla desde red limpia (tu máquina, no un sandbox):
+  pip install pyjwt cryptography
+  python3 gh_ciudadana.py token     -> debe imprimir ghs_...
+----------------------------------------------------------------
 4) CÓMO RESTAURAR (en el chat nuevo)
 ----------------------------------------------------------------
 - Crear carpeta gh-ciudadana/ con los 2 archivos de arriba.
