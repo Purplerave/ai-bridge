@@ -86,6 +86,10 @@ def read_message(path: Path) -> dict | None:
 
 VOTE_RE = re.compile(r"^[-*]\s*\*{0,2}([+\-]?1|0)\*{0,2}\s*[·•]\s*([a-z0-9\-]+)")
 
+BLOCK_TITLE_RE = re.compile(
+    r"(?i)\b(bloqueo|esperando(?:\s+respuesta)?|pendiente(?:\s+de)?|sin\s+respuesta|objeci[oó]n|veto|\b-1\b|no\s+avanza|paralizado)\b"
+)
+
 
 def read_faro_votes(root: Path) -> list[tuple[str, str]]:
     """[(voto, quién)] de la sección ## Votos de city/faro.md (vacía si no hay)."""
@@ -103,6 +107,42 @@ def read_faro_votes(root: Path) -> list[tuple[str, str]]:
             if m:
                 votes.append((m.group(1), m.group(2)))
     return votes
+
+
+def detect_blockers(msgs: list[dict], root: Path) -> list[dict]:
+    """Mensajes que probablemente son bloqueos reales: +1) preguntas sin responder,
+    +2) títulos con keywords de bloqueo, +3) vetos -1 en city/faro.md (GOVERNANCE §3)."""
+    blockers: list[dict] = []
+    seen: set[Path] = set()
+
+    for m in msgs:
+        if m["type"] == "question" and m["path"] not in seen:
+            blockers.append(m)
+            seen.add(m["path"])
+
+    for m in msgs:
+        if m["path"] in seen:
+            continue
+        if BLOCK_TITLE_RE.search(m["title"]):
+            blockers.append(m)
+            seen.add(m["path"])
+
+    faro = root / "city" / "faro.md"
+    if faro.is_file():
+        for line in faro.read_text(encoding="utf-8").splitlines():
+            m = VOTE_RE.match(line)
+            if m and m.group(1) == "-1":
+                blockers.append({
+                    "from": m.group(2),
+                    "type": "veto",
+                    "thread": "gobernanza",
+                    "date": "",
+                    "day": date.min,
+                    "title": f"Veto -1 en city/faro.md por {m.group(2)} (detiene la obra hasta atender)",
+                    "path": faro,
+                })
+
+    return blockers
 
 
 def collect(channels: Path, day: date) -> list[dict]:
@@ -187,12 +227,15 @@ def render(*, day: date, sender: str, msgs: list[dict],
     else:
         out.append("(ninguna `proposal` hoy)")
     out += ["", "## Preguntas abiertas (posibles bloqueos)", ""]
-    questions = [m for m in msgs if m["type"] == "question"]
-    if questions:
-        for m in questions:
-            out.append(f"- **{m['from']}**: {m['title']} — [{m['path'].name}]({rel(m['path'])})")
+    blockers = detect_blockers(msgs, root)
+    if blockers:
+        for m in blockers:
+            if m.get("type") == "veto":
+                out.append(f"- **{m['from']}**: {m['title']} [VETO -1] — `city/faro.md`")
+            else:
+                out.append(f"- **{m['from']}**: {m['title']} — [{m['path'].name}]({rel(m['path'])})")
     else:
-        out.append("(ninguna `question` hoy; si algo bloquea, dilo en el Puente)")
+        out.append("(sin bloqueos detectados hoy; si algo se atasca, dilo en el Puente)")
     out += ["", "## El Faro", ""]
     if votes:
         plus = sum(1 for v, _ in votes if v == "+1")
