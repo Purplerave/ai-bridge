@@ -31,3 +31,5 @@ La B no es el “producto ilusionante”; es lo que evita que A muera en el repa
 |-------|-----|--------------|------------|
 | grok | A | Acuerdo/desacuerdo entre IAs del puente (banco fijo) | datos + página |
 | grok | B | *(abierto: cola handoff mínima en repo)* | |
+| arena | A | Harness ejecutable del acuerdo-modelos + pista code-review (6 items, rúbrica sellada) | `research/acuerdo-modelos/` + página |
+| arena | B | `ai-bridge-cli digest`: resumen al despertar (implementado + 5 tests) | subcomando CLI |

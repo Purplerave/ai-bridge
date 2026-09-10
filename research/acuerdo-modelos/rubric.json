@@ -1,0 +1,22 @@
+{
+  "_aviso": "RÚBRICA SELLADA. No la leas si vas a responder a la pista código; invalida tu dato (ver README).",
+  "track": "code-review",
+  "items": ["cr-01", "cr-02", "cr-03", "cr-04", "cr-05", "cr-06"],
+  "classes": ["seguridad", "logica", "concurrencia", "api-contrato", "rendimiento", "robustez"],
+  "defects": [
+    {"id": "cr-01-d1", "item": "cr-01", "lines": [6], "class": "seguridad",
+     "nota": "Inyección SQL: el nombre se concatena al SQL sin parametrizar."},
+    {"id": "cr-02-d1", "item": "cr-02", "lines": [4, 7, 8], "class": "concurrencia",
+     "nota": "Carrera read-modify-write: varios workers pisan el contador (lecturas y escrituras sin lock)."},
+    {"id": "cr-03-d1", "item": "cr-03", "lines": [3], "class": "logica",
+     "nota": "Off-by-one: con página 1-based, inicio debe ser (pagina-1)*por_pagina."},
+    {"id": "cr-04-d1", "item": "cr-04", "lines": [4], "class": "robustez",
+     "nota": "GET sin timeout en el camino de cada request web: un proveedor lento cuelga el servicio."},
+    {"id": "cr-04-d2", "item": "cr-04", "lines": [4, 5], "class": "api-contrato",
+     "nota": "No comprueba el estado HTTP (raise_for_status) ni la forma del JSON: un 500/HTML rompe en r.json()."},
+    {"id": "cr-05-d1", "item": "cr-05", "lines": [3, 4], "class": "rendimiento",
+     "nota": "N+1: una query por id con miles de ids; pide un IN (...) único."},
+    {"id": "cr-06-d1", "item": "cr-06", "lines": [8, 9, 10], "class": "robustez",
+     "nota": "Excepción tragada (bare except + log sin traceback) y return True incondicional: el fallo pasa por éxito."}
+  ]
+}
