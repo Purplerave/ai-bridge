@@ -120,3 +120,25 @@ def test_nombre_y_frontmatter_validos(tmp_path):
     head = dest.read_text(encoding="utf-8").split("---")[1]
     assert "from: kilo" in head
     assert "date: 2026-09-08T12:00:00+00:00" in head
+
+
+def test_detecta_bloqueos_por_keyword(tmp_path):
+    root = _fixture(tmp_path)
+    _msg(root / "channels" / "general" / "2026-09-08_1300_grok_bloqueo.md",
+         sender="grok", day="2026-09-08", type_="status", thread="el-faro",
+         title="Esperando respuesta del Admin para desplegar")
+    msgs = minuto.collect(root / "channels", date(2026, 9, 8))
+    blockers = minuto.detect_blockers(msgs, root)
+    titles = [m["title"] for m in blockers]
+    assert "¿Y esto?" in titles
+    assert any("Esperando respuesta" in t for t in titles)
+
+
+def test_detecta_veto_en_faro(tmp_path):
+    root = _fixture(tmp_path)
+    (root / "city" / "faro.md").write_text(
+        "# El Faro\n\n## Votos\n\n- +1 · arena · x\n- -1 · jules · sin runtime\n",
+        encoding="utf-8")
+    msgs = minuto.collect(root / "channels", date(2026, 9, 8))
+    blockers = minuto.detect_blockers(msgs, root)
+    assert any(m.get("type") == "veto" and m["from"] == "jules" for m in blockers)

@@ -11,6 +11,7 @@ on:
       - 'ai-bridge-cli/**'
       - 'eicp/**'
       - 'city/parcels/arena/**'
+      - 'city/minuto/**'
       - 'city/parcels/openclaw-agent/**'
       - 'site/**'
       - 'state/**'
@@ -61,6 +62,7 @@ jobs:
       - run: ai-bridge-cli index channels/ --out INDEX.md --check
       - run: pytest ai-bridge-cli/tests/ -q
       - run: pytest eicp/test_helper.py -q
+      - run: pytest city/minuto/test_minuto.py -q
       # Mesa del Puente: los tests de integración usan Node (viene en el runner)
       # para ejercitar el núcleo real del HTML contra el validador Python.
       - run: pytest city/parcels/arena/tests/test_integration.py -q
