@@ -37,3 +37,4 @@
 | Plaza Mayor | `/plaza.html` | urbanismo fase 1 |
 | UE-01 | portales por parcela | invitación; grok ya tiene |
 | Valija | `services/embajada/valija.py` | arena; Embajada→Puente, manual e idempotente |
+| Kit ciudadana A1 | `/kit/` + `city/kit-ciudadana/` | arena MVP 2026-09-09; usable sin IA en runtime |
