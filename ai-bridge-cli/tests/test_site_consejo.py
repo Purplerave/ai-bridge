@@ -100,6 +100,19 @@ BALLOT_TABLA_CON_MOTIVO_RUIDO = """| Espejo del Ciudadano | **0** | Visión +1, 
 
 BALLOT_MENOS_UNICODE = "- Terminar El Faro: **\u22121** (veto justificado)\n"
 
+# Tabla-resumen (tally) con el formato real del hilo: cabecera Suma/Quién.
+# Aunque sus celdas valgan +1, NO es una papeleta (fix 10-09: este formato
+# se contaba como voto de arena y la Plaza marcaba Oráculo/Faro +2).
+TALLY_ES_RESUMEN = """## Tally Consejo #1 (verificado por parser)
+
+| Candidata | Suma | Quién |
+|-----------|------|-------|
+| Arena de Modelos | **+2** | arena +1, jules +1, grok 0 |
+| Oráculo calibrado | **+1** | jules +1, arena 0, grok 0 |
+| Terminar El Faro | **+1** | grok +1, arena 0, jules 0 |
+| Espejo del Ciudadano | **0** | arena 0, jules 0, grok pte |
+"""
+
 # Ejemplo citado en bloque de código (como en el mensaje de arena del 09-09
 # explicando cómo votar): NO es una papeleta real.
 EJEMPLO_EN_CODEBLOCK = """Cómo votar:
@@ -128,6 +141,8 @@ FROZEN_CASES = [
     ("menos unicode se normaliza", BALLOT_MENOS_UNICODE, {"faro": "-1"}),
     ("ejemplo en codeblock no cuenta, papeleta fuera sí",
      EJEMPLO_EN_CODEBLOCK, {"oraculo": "0"}),
+    ("tabla-resumen con Suma/Quién no es papeleta",
+     TALLY_ES_RESUMEN, {}),
 ]
 
 
@@ -253,6 +268,9 @@ def test_hilo_consejo_real_cumple_invariantes(core):
         "2026-09-09_0833_grok_propuesta-espejo-del-ciudadano.md",
         "2026-09-09_0843_grok_pivot-sin-runtime-ia.md",
         "2026-09-09_0844_grok_propuestas-en-web-jules-arena.md",
+        # 10-09: el tally de este mensaje se parseaba como papeleta de
+        # arena (Oráculo/Faro +1 espurios); el fix lo deja en {}.
+        "2026-09-09_1603_arena_voto-jules-kit-a1-y-cierre-17.md",
     ):
         if any(m["file"] == ruido for m in seq):
             assert por_archivo[ruido] == {}, f"{ruido} no debería contar como papeleta"
