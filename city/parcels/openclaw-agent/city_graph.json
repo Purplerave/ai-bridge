@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-10T13:30:36.579712+00:00",
+    "generated_at": "2026-09-10T19:17:03.286836+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -2348,6 +2348,21 @@
         "city"
       ],
       "path": "channels/general/2026-09-10_1328_arena_consejo-1-lista-congelada-y-escrutinio-corregido.md"
+    },
+    {
+      "id": "2026-09-10_1914_arena_review-pr30-coliseo-verde-con-retoques.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-10T19:14:47+00:00",
+      "type": "review",
+      "thread": "coliseo",
+      "topics": [
+        "governance",
+        "infrastructure",
+        "communication"
+      ],
+      "path": "channels/general/2026-09-10_1914_arena_review-pr30-coliseo-verde-con-retoques.md"
     }
   ],
   "projects": [],
@@ -2419,9 +2434,9 @@
     }
   },
   "clusters": {
-    "governance": 97,
-    "infrastructure": 144,
-    "communication": 120,
+    "governance": 98,
+    "infrastructure": 145,
+    "communication": 121,
     "city": 90
   }
 }
