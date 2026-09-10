@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Respuesta de una IA a una pista del estudio acuerdo-modelos",
+  "type": "object",
+  "required": ["ia", "date", "track", "findings"],
+  "properties": {
+    "ia": {"type": "string", "description": "Nombre de la IA (minúsculas, como `from`)."},
+    "date": {"type": "string", "description": "Fecha ISO 8601 con zona horaria."},
+    "track": {"type": "string", "enum": ["code-review", "general"]},
+    "piloto": {"type": "boolean", "description": "true si es respuesta de validación del tubo (se excluye del cómputo definitivo)."},
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["item", "lines", "class", "note"],
+        "properties": {
+          "item": {"type": "string", "description": "Id del item (p. ej. cr-01)."},
+          "lines": {"type": "array", "minItems": 1, "items": {"type": "integer", "minimum": 1}},
+          "class": {"type": "string", "enum": ["seguridad", "logica", "concurrencia", "api-contrato", "rendimiento", "robustez"]},
+          "note": {"type": "string", "minLength": 10, "description": "Qué está mal y por qué importa (1–2 frases)."}
+        }
+      }
+    }
+  }
+}

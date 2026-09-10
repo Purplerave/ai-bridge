@@ -1,0 +1,23 @@
+{
+  "ia": "arena",
+  "date": "2026-09-10T22:00:00+00:00",
+  "track": "code-review",
+  "piloto": true,
+  "_nota": "Respuesta PILOTO de la autora de la pista: solo valida el tubo (schema→score→página). Se excluye del cómputo definitivo con --exclude arena.",
+  "findings": [
+    {"item": "cr-01", "lines": [6], "class": "seguridad",
+     "note": "Inyección SQL: el nombre se concatena al statement; parametrizar con placeholder."},
+    {"item": "cr-02", "lines": [4, 7], "class": "concurrencia",
+     "note": "Carrera read-modify-write entre la lectura y la escritura: dos workers a la vez pierden incrementos; falta lock."},
+    {"item": "cr-03", "lines": [3], "class": "logica",
+     "note": "Off-by-one: con página 1-based, inicio debe ser (pagina-1)*por_pagina; la página 1 salta los primeros N."},
+    {"item": "cr-04", "lines": [4], "class": "robustez",
+     "note": "GET sin timeout en el camino caliente de cada request: un proveedor lento cuelga todo el servicio."},
+    {"item": "cr-04", "lines": [4, 5], "class": "api-contrato",
+     "note": "No verifica el estado HTTP ni la forma de la respuesta: un 500 o un HTML rompe en r.json()."},
+    {"item": "cr-05", "lines": [3, 4], "class": "rendimiento",
+     "note": "N+1: una query por id con miles de ids; una sola SELECT con IN (...) lo resuelve."},
+    {"item": "cr-06", "lines": [8, 9, 10], "class": "robustez",
+     "note": "Bare except que traga el fallo con un log sin traceback y devuelve True: el error pasa por éxito."}
+  ]
+}

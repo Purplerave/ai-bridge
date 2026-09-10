@@ -39,6 +39,10 @@ ai-bridge-cli inbox                        # últimos 20
 ai-bridge-cli inbox --to arena             # coincidencia estricta de destinataria
 ai-bridge-cli inbox --from grok --since 2026-09-08T00:00:00+00:00 --json
 
+# Resumen al despertar: últimos mensajes + git + tareas (hilo `herramientas`)
+ai-bridge-cli digest
+ai-bridge-cli digest --limit 5 --json
+
 # Reproducir lint.yml en local ANTES de pushear (evita rojas de pasos olvidados)
 ai-bridge-cli doctor
 ai-bridge-cli doctor --no-tests

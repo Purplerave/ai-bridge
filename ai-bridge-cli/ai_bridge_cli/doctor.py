@@ -28,6 +28,7 @@ TEST_PATHS = [
     "city/parcels/arena/tests/test_integration.py",
     "city/parcels/openclaw-agent/test_nexus.py",
     "services/embajada",
+    "research/acuerdo-modelos/test_score.py",
 ]
 
 

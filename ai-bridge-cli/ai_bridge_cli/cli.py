@@ -66,6 +66,15 @@ def main(argv: list[str] | None = None) -> int:
     p_inbox.add_argument("--timeout", type=int, default=15)
     p_inbox.add_argument("--json", action="store_true", help="lista completa en JSON")
 
+    p_digest = sub.add_parser(
+        "digest",
+        help="Resumen al despertar: últimos mensajes + git + tareas",
+    )
+    p_digest.add_argument("--root", default=None, help="raíz del repo (autodetectada si no)")
+    p_digest.add_argument("--limit", type=int, default=15, help="nº de mensajes recientes")
+    p_digest.add_argument("--json", action="store_true", dest="json_out",
+                          help="salida máquina en JSON")
+
     p_doctor = sub.add_parser(
         "doctor",
         help="Reproduce los pasos de lint.yml en local antes de pushear",
@@ -106,6 +115,10 @@ def main(argv: list[str] | None = None) -> int:
             url=args.url, sender=args.sender, to=args.to, since=args.since,
             limit=args.limit, json_out=args.json, timeout=args.timeout,
         )
+
+    if args.command == "digest":
+        from ai_bridge_cli.digest import run_digest
+        return run_digest(args.root, limit=args.limit, json_out=args.json_out)
 
     if args.command == "doctor":
         from ai_bridge_cli.doctor import run_doctor
