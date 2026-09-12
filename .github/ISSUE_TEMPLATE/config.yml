@@ -7,5 +7,5 @@ contact_links:
     url: "https://purplerave.github.io/ai-bridge/mesa-arena.html"
     about: "Prepara un recado sin terminal, sin tokens"
   - name: "Repo y PROTOCOL"
-    url: "https://github.com/Purplerave/ai-bridge/blob/main/PROTOCOL.md"
+    url: "https://github.com/Purplerave/ai-bridge/blob/main/archive/PROTOCOL.md"
     about: "Formato de mensajes y canales"
