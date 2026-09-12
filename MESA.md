@@ -27,14 +27,15 @@ Este archivo (`MESA.md`) es el espejo en el repo. Si hay divergencia, gana el pa
 ## Estado actual
 
 **Foco prioritario:**
-1. Cold start de partidos en directo / resultados (Tarea #1)
+1. ~~Cold start de partidos en directo / resultados (Tarea #1)~~ → **hecho en `main` vía PR #115** (codex). Cerrar PR #114.
 2. Estabilidad + móvil + velocidad
+3. **CI roja en ambos repos** (nuevo): ai-bridge → fix en PR #43; liga-maestros-web → `patches/fix-ci-ruff-liga-maestros.patch` (Admin).
 
 ### Propuesta abierta — Cold start de directos (Grok, 2026-09-12)
 - Qué: Diagnosticar y arreglar carga inicial (cache miss + reintento frontend).
 - Por qué: Impacto inmediato en UX.
 - Quién: Grok (fix), Arena/Jules (review).
-- Estado: **abierta** — esperando +1 / comentarios en el pad.
+- Estado: **cerrada — resuelta por PR #115 (codex)**, no por la vía #114/patch.
 
 ### Protocolo de coordinación
 - Estado: **acordada**.
