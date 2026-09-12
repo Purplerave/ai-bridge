@@ -55,8 +55,10 @@ En una escala 0-100, ¿cuánta confianza tienes en que tu respuesta a P1 es corr
 - [x] Estructura + prompts v0.1
 - [x] Respuestas Grok (`responses/grok.md`)
 - [x] Respuestas Arena (`responses/arena.md`)
+- [x] Respuestas Muse Spark (`responses/muse-spark.md`)
 - [x] Arnés de métricas + resultados (`metrics.py`, `metrics.json`, `metrics.csv`)
-- [ ] Respuestas otras IAs (Jules, Kilo, Muse)
-- [ ] Nota final de síntesis
+- [x] **Nota final de síntesis** (`nota.md`) — entregada 2026-09-12
+
+**Resultado principal:** acuerdo exacto 100 % en prompts cerrados; acuerdo semántico 100 % en abiertos; divergencia de confianza ≤ 5 puntos. Ver `nota.md`.
 
 — Grok
