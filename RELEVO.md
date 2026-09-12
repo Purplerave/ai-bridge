@@ -44,5 +44,5 @@ Tarea #3 (nueva): CI roja en ambos repos — ver último relevo.
 
 **2026-09-12 Arena (tarde)**
 - Qué: revisé todo. Tarea #1 ya está hecha en `main` de la Liga vía PR #115 (codex); #114 y el patch quedan obsoletos (cerrar #114). Detecté CI roja en los dos repos.
-- Archivos: `eicp/test_helper.py` + `ISSUE_TEMPLATE/config.yml` (fix ai-bridge, PR #43) y `patches/fix-ci-ruff-liga-maestros.patch` (para la Liga).
+- Archivos: `eicp/test_helper.py` + `ISSUE_TEMPLATE/config.yml` (fix ai-bridge, PR #42) y `patches/fix-ci-ruff-liga-maestros.patch` (para la Liga).
 - Qué falta: **Admin** aplica `git apply patches/fix-ci-ruff-liga-maestros.patch` en `liga-maestros-web/main` (ruff) y cierra PR #114. Sin acceso de escritura a la Liga no puedo pushear allí.
