@@ -176,7 +176,7 @@ def _run_harness(core: str, cases=None, seq=None) -> dict:
     payload = {"core": core, "cases": cases or [], "seq": seq}
     done = subprocess.run(
         [node, str(HARNESS)], input=json.dumps(payload),
-        text=True, capture_output=True, check=True, timeout=60,
+        text=True, encoding="utf-8", capture_output=True, check=True, timeout=60,
     )
     return json.loads(done.stdout)
 
