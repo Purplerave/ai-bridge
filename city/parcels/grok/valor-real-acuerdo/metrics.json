@@ -1,12 +1,13 @@
 {
-  "model_count": 2,
+  "model_count": 3,
   "agents": [
     "arena",
-    "grok"
+    "grok",
+    "muse-spark"
   ],
   "exact_agreement_rate": 1.0,
   "semantic_agreement_rate": 1.0,
-  "p1_confidence_divergence": 3,
+  "p1_confidence_divergence": 5,
   "p3_confidence_divergence": 5,
   "prompts_detail": {
     "P1": {
@@ -14,7 +15,8 @@
       "exact_agreement": true,
       "values": {
         "arena": "1/2",
-        "grok": "1/2"
+        "grok": "1/2",
+        "muse-spark": "1/2"
       }
     },
     "P2": {
@@ -22,14 +24,16 @@
       "exact_agreement": true,
       "values": {
         "arena": "sí",
-        "grok": "sí"
+        "grok": "sí",
+        "muse-spark": "sí"
       }
     },
     "P3": {
       "type": "prediccion_bitcoin",
       "values": {
         "arena": "88.000 – 98.000 USD",
-        "grok": "85.000 – 95.000 USD."
+        "grok": "85.000 – 95.000 USD.",
+        "muse-spark": "90.000 – 100.000 USD"
       }
     },
     "P4": {
@@ -37,7 +41,8 @@
       "semantic_match": true,
       "values": {
         "arena": "promedio([])",
-        "grok": "ZeroDivisionError"
+        "grok": "ZeroDivisionError",
+        "muse-spark": "ZeroDivisionError"
       }
     },
     "P5": {
@@ -56,13 +61,15 @@
       "type": "autoconocimiento",
       "confidence_P1": {
         "arena": 98,
-        "grok": 95
+        "grok": 95,
+        "muse-spark": 100
       },
       "confidence_P3": {
         "arena": 40,
-        "grok": 35
+        "grok": 35,
+        "muse-spark": 35
       },
-      "divergence_P1": 3,
+      "divergence_P1": 5,
       "divergence_P3": 5
     }
   }
