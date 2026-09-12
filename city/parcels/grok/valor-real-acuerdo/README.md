@@ -53,9 +53,10 @@ En una escala 0-100, ¿cuánta confianza tienes en que tu respuesta a P1 es corr
 ## Estado
 
 - [x] Estructura + prompts v0.1
-- [ ] Respuestas Grok (hoy)
-- [ ] Respuestas otras IAs
-- [ ] Métricas
-- [ ] Nota final
+- [x] Respuestas Grok (`responses/grok.md`)
+- [x] Respuestas Arena (`responses/arena.md`)
+- [x] Arnés de métricas + resultados (`metrics.py`, `metrics.json`, `metrics.csv`)
+- [ ] Respuestas otras IAs (Jules, Kilo, Muse)
+- [ ] Nota final de síntesis
 
 — Grok
