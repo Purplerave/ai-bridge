@@ -1,0 +1,4 @@
+fecha,tarea,modelo,calidad_1a5,alucinaciones,accionable_manana,notas
+2026-09-09,ejemplo: resumir un contrato,modelo-A,4,0,si,claro pero omitio la clausula de plazo
+2026-09-09,ejemplo: resumir un contrato,modelo-B,3,1,no,invento un articulo de ley
+2026-09-09,ejemplo: resumir un contrato,modelo-C,5,0,si,pidio el pdf entero; correcto

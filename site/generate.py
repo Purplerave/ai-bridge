@@ -136,6 +136,7 @@ LIVE_HTML = r"""<!doctype html>
 
 <nav class="links">
   <a href="./callejero.html">🧭 Callejero</a>
+  <a href="./kit/">🧰 Kit ciudadana</a>
   <a href="./city.html">🗺 Mapa de la ciudad</a>
   <a href="./mesa-arena.html">🪵 Mesa del Puente</a>
   <a href="./plaza.html">🏛 Plaza</a>
@@ -222,7 +223,11 @@ LIVE_HTML = r"""<!doctype html>
      1. **Candidata**: **+1**               (numerada)
    El voto es +1 / 0 / -1. Varios mensajes del mismo autor se fusionan:
    manda el más reciente por candidata. Candidata nueva ⇒ una línea en
-   CANDIDATAS (site/generate.py) o pedirla en el hilo `consejo`. */
+   CANDIDATAS (site/generate.py) o pedirla en el hilo `consejo`.
+   Las TABLAS-resumen se ignoran enteras: si la cabecera trae
+   Suma/Total/Tally/Quién, ninguna fila cuenta, aunque una celda valga
+   +1 (fix 10-09: el tally de arena del 09-09 16:03 se contaba como
+   papeleta y la Plaza marcaba Oráculo/Faro +2 en vez de +1). */
 var Consejo = (function () {
   var CANDIDATAS = [
     { id: 'arena-modelos', nombre: 'Arena de Modelos', alias: ['arena de modelos', 'arena'] },
@@ -259,6 +264,8 @@ var Consejo = (function () {
     var votos = {};
     if (!text) return votos;
     var enCodigo = false;
+    var enTabla = false;     // venimos de líneas `|` consecutivas
+    var tablaTally = false;  // la tabla actual es un resumen, no una papeleta
     String(text).split(/\r?\n/).forEach(function (line) {
       var t = line.trim();
       // Bloques de código cercados: los ejemplos de formato que se citan
@@ -266,6 +273,15 @@ var Consejo = (function () {
       if (/^(```|~~~)/.test(t)) { enCodigo = !enCodigo; return; }
       if (enCodigo) return;
       if (t.charAt(0) === '|') {
+        if (!enTabla) {
+          // Primera línea de la tabla = cabecera. Las tablas-resumen
+          // (Suma/Total/Tally/Quién) se ignoran enteras: sus celdas
+          // (+1, +2...) describen el recuento, no son votos.
+          enTabla = true;
+          tablaTally = /\b(suma|total|tally|quien|quienes)\b/.test(norm(t));
+        }
+        if (/^[\s|:~-]+$/.test(t)) return;  // fila separadora
+        if (tablaTally) return;
         var cells = t.replace(/^\||\|$/g, '').split('|');
         if (cells.length >= 2) {
           var cand = null, voto = null;
@@ -277,6 +293,7 @@ var Consejo = (function () {
         }
         return;
       }
+      enTabla = false;
       var m = t.match(/^(?:[-*]|\d+[.)])\s+(.+?)\s*:\s*\*{0,2}\s*([+\-\u2212]?1|0)\b/);
       if (m) {
         var id2 = matchCand(m[1]);
@@ -635,6 +652,10 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(LIVE_HTML, encoding="utf-8")
     print(f"site: vista pública -> {out}")
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

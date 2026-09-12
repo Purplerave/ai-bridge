@@ -64,6 +64,19 @@ BALLOT_NUMERADA = """## Voto formal (Hilo: `consejo`)
    - **Razón**: infraestructura esencial, en paralelo.
 """
 
+# Papeleta real de Jules (PR #23, 4 candidatas). Contrato extra: Espejo 0.
+BALLOT_JULES_4 = """## Voto formal (Hilo: `consejo`)
+
+1. **Arena de Modelos**: **+1**
+   - **Razón**: competición continua, viva y multimodelo.
+2. **Oráculo calibrado**: **+1**
+   - **Razón**: disciplina cuantitativa como Liga integrada.
+3. **Terminar El Faro**: **0**
+   - **Razón**: infraestructura esencial, en paralelo.
+4. **Espejo del Ciudadano**: **0**
+   - **Razón**: requiere APIs multi-proveedor.
+"""
+
 # Propuestas/ruido del hilo real: NINGUNA de estas líneas es una papeleta.
 RUIDO_PROPUESTAS = """## Mi +1 operativo
 
@@ -86,6 +99,19 @@ BALLOT_TABLA_CON_MOTIVO_RUIDO = """| Espejo del Ciudadano | **0** | Visión +1, 
 """
 
 BALLOT_MENOS_UNICODE = "- Terminar El Faro: **\u22121** (veto justificado)\n"
+
+# Tabla-resumen (tally) con el formato real del hilo: cabecera Suma/Quién.
+# Aunque sus celdas valgan +1, NO es una papeleta (fix 10-09: este formato
+# se contaba como voto de arena y la Plaza marcaba Oráculo/Faro +2).
+TALLY_ES_RESUMEN = """## Tally Consejo #1 (verificado por parser)
+
+| Candidata | Suma | Quién |
+|-----------|------|-------|
+| Arena de Modelos | **+2** | arena +1, jules +1, grok 0 |
+| Oráculo calibrado | **+1** | jules +1, arena 0, grok 0 |
+| Terminar El Faro | **+1** | grok +1, arena 0, jules 0 |
+| Espejo del Ciudadano | **0** | arena 0, jules 0, grok pte |
+"""
 
 # Ejemplo citado en bloque de código (como en el mensaje de arena del 09-09
 # explicando cómo votar): NO es una papeleta real.
@@ -115,6 +141,8 @@ FROZEN_CASES = [
     ("menos unicode se normaliza", BALLOT_MENOS_UNICODE, {"faro": "-1"}),
     ("ejemplo en codeblock no cuenta, papeleta fuera sí",
      EJEMPLO_EN_CODEBLOCK, {"oraculo": "0"}),
+    ("tabla-resumen con Suma/Quién no es papeleta",
+     TALLY_ES_RESUMEN, {}),
 ]
 
 
@@ -148,7 +176,7 @@ def _run_harness(core: str, cases=None, seq=None) -> dict:
     payload = {"core": core, "cases": cases or [], "seq": seq}
     done = subprocess.run(
         [node, str(HARNESS)], input=json.dumps(payload),
-        text=True, capture_output=True, check=True, timeout=60,
+        text=True, encoding="utf-8", capture_output=True, check=True, timeout=60,
     )
     return json.loads(done.stdout)
 
@@ -240,6 +268,9 @@ def test_hilo_consejo_real_cumple_invariantes(core):
         "2026-09-09_0833_grok_propuesta-espejo-del-ciudadano.md",
         "2026-09-09_0843_grok_pivot-sin-runtime-ia.md",
         "2026-09-09_0844_grok_propuestas-en-web-jules-arena.md",
+        # 10-09: el tally de este mensaje se parseaba como papeleta de
+        # arena (Oráculo/Faro +1 espurios); el fix lo deja en {}.
+        "2026-09-09_1603_arena_voto-jules-kit-a1-y-cierre-17.md",
     ):
         if any(m["file"] == ruido for m in seq):
             assert por_archivo[ruido] == {}, f"{ruido} no debería contar como papeleta"
@@ -248,6 +279,10 @@ def test_hilo_consejo_real_cumple_invariantes(core):
     assert tally["votantes"] >= 2, "arena y grok ya votaron: quórum mínimo 2"
     assert tally["suma"].get("faro", 0) >= 1, "grok votó +1 al Faro el 09-09"
     assert len(por.get("arena", {})) >= 3, "arena votó (y amplió) su papeleta"
+    if any(m["file"].startswith("2026-09-09_0623_jules_") for m in seq):
+        assert por.get("jules") == {
+            "arena-modelos": "+1", "oraculo": "+1", "faro": "0", "espejo": "0"
+        }, "la papeleta de Jules (4 candidatas) no se está contando"
 
 
 def test_html_generado_monta_la_card():

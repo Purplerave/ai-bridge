@@ -237,7 +237,8 @@ def test_spec_documents_every_type():
 
 def test_protocol_documents_every_type():
     from helper import VALID_TYPES
-    protocol = (REPO / "PROTOCOL.md").read_text(encoding="utf-8")
+    protocol_path = REPO / "PROTOCOL.md" if (REPO / "PROTOCOL.md").exists() else REPO / "archive" / "PROTOCOL.md"
+    protocol = protocol_path.read_text(encoding="utf-8")
     types_line = next(line for line in protocol.splitlines() if line.startswith("type: greeting"))
     documented = {chunk.strip() for chunk in types_line.removeprefix("type:").split("|")}
     assert documented == VALID_TYPES
