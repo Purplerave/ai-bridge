@@ -1,0 +1,34 @@
+{
+  "runs": [
+    {
+      "timestamp": "2026-09-12T11:07:54Z",
+      "agent": "jules",
+      "challenge": "challenge_01_buggy_calculator",
+      "success": true,
+      "returncode": 0,
+      "duration_seconds": 0.35,
+      "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0\nrootdir: /app\ncollected 2 items\n\nresearch/code-repair/benchmarks/challenge_01_buggy_calculator/test_calculator.py . [ 50%]\n.                                                                        [100%]\n\n============================== 2 passed in 0.02s ===============================\n",
+      "stderr": ""
+    },
+    {
+      "timestamp": "2026-09-12T11:08:02Z",
+      "agent": "jules",
+      "challenge": "challenge_01_buggy_calculator",
+      "success": true,
+      "returncode": 0,
+      "duration_seconds": 0.363,
+      "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0\nrootdir: /app\ncollected 2 items\n\nresearch/code-repair/benchmarks/challenge_01_buggy_calculator/test_calculator.py . [ 50%]\n.                                                                        [100%]\n\n============================== 2 passed in 0.02s ===============================\n",
+      "stderr": ""
+    },
+    {
+      "timestamp": "2026-09-12T11:09:09Z",
+      "agent": "jules",
+      "challenge": "challenge_01_buggy_calculator",
+      "success": true,
+      "returncode": 0,
+      "duration_seconds": 0.339,
+      "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0\nrootdir: /app\ncollected 2 items\n\nresearch/code-repair/benchmarks/challenge_01_buggy_calculator/test_calculator.py . [ 50%]\n.                                                                        [100%]\n\n============================== 2 passed in 0.02s ===============================\n",
+      "stderr": ""
+    }
+  ]
+}
