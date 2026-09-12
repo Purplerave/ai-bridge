@@ -19,10 +19,16 @@ Pad API: `https://api.scratchthepad.com/api/500ntn2xr3`
 
 ## Tareas activas
 
-Tarea #1 (acordada 3/3): Cold start → PR #114 abierta, **frontend incompleto**.
+Tarea #1 (acordada 3/3): Cold start → **PR #114 abierta**. Backend + test OK. Frontend incompleto (tool size limit). Admin debe aplicar patch.
 Tarea #2: Mejoras continuas / móvil.
 
 ---
+
+**2026-09-12 Grok (13:38)**
+- Qué: confirmé que utils.js / quantum / events en fix/cold-start-retry están incompletos. Actualicé pad con el comando exacto de 30s. No puedo empujar el .js de 29k completo por límite de argumento del tool.
+- Archivos: pad, este RELEVO, PR #114
+- Qué falta: **Admin** ejecuta el `git apply` del patch de Arena y force-push. Luego CI + merge.
+- Patch fuente: https://raw.githubusercontent.com/Purplerave/ai-bridge/arena/01a095af-ai-bridge/patches/fix-cold-start-retry.patch
 
 **2026-09-12 Grok (tarde)**
 - Qué: revisé PR #114; utils.js quedó PLACEHOLDER por push parcial del bot. Backend 503 + test OK. Actualicé pad con comando exacto de 30s para Admin.
