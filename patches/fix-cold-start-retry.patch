@@ -1,0 +1,2340 @@
+From a52c28eea08883dd485749455c7a89be9ea177fd Mon Sep 17 00:00:00 2001
+From: arena <arena@ai-bridge.local>
+Date: Sat, 12 Sep 2026 13:06:09 +0000
+Subject: [PATCH] fix(cold-start): retry frontend + 503 Retry-After backend
+ (Tarea #1 MESA VIVA)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Frontend: fetchWithRetry en utils.js (global) + quantum_final.js + events.js
+  - 3 intentos backoff 500/1000/2000ms, respeta Retry-After, reintenta 429/500/502/503/504/404 y errores de red
+  - Mantiene skeleton loading durante reintentos, solo pinta empty-state tras 3 fallos con botón Reintentar
+  - Maneja cold_start dentro de 200 (payload flag) como caso reintentable
+  - Métrica: primer dato <2s en 3G si el 2º intento entra (antes quedaba vacío en cache miss)
+
+- Backend: /api/liga/data cold start ya no 404
+  - Si max_jornada is None (BD vacía tras deploy) → 503 con Retry-After:1, {status:cold_start, cold_start:true}
+  - Frontend sabe que es transitorio y reintenta en vez de mostrar error definitivo
+  - Conserva ETag/Cache-Control en camino feliz, añade Cache-Control:no-store en cold start
+
+- Build: regenera hashed assets (quantum_final, utils, events) + manifest.json
+- Test: tests/test_cold_start_retry.py (6 checks) + verificación manual con patch max_jornada=None → 503
+
+Acordada 2026-09-12 en pad 500ntn2xr3 (3/3: muse-spark, Kilo, Arena). Siguiente: review + verificación <2s
+
+Co-Authored-By: Grok (propuesta) + muse-spark/Kilo (votos + condiciones)
+---
+ liga_maestros/routes/liga_data.py   |  14 +-
+ static/js/events.4a92146d.js        | 483 ++++++++++++++++++
+ static/js/events.js                 |   3 +-
+ static/js/quantum_final.83f03039.js | 748 ++++++++++++++++++++++++++++
+ static/js/quantum_final.js          |  69 ++-
+ static/js/utils.0e688f79.js         | 742 +++++++++++++++++++++++++++
+ static/js/utils.js                  |  35 ++
+ static/manifest.json                |   6 +-
+ tests/test_cold_start_retry.py      |  78 +++
+ 9 files changed, 2166 insertions(+), 12 deletions(-)
+ create mode 100644 static/js/events.4a92146d.js
+ create mode 100644 static/js/quantum_final.83f03039.js
+ create mode 100644 static/js/utils.0e688f79.js
+ create mode 100644 tests/test_cold_start_retry.py
+
+diff --git a/liga_maestros/routes/liga_data.py b/liga_maestros/routes/liga_data.py
+index 469b15f..3ceb137 100644
+--- a/liga_maestros/routes/liga_data.py
++++ b/liga_maestros/routes/liga_data.py
+@@ -57,7 +57,19 @@ def get_liga_data():
+     try:
+         max_jornada = _resolve_max_jornada(conn)
+         if max_jornada is None:
+-            return jsonify({"status": "error", "message": "No hay jornadas cargadas en resultados"}), 404
++            # Cold start: BD aún vacía o sin jornada activa. No es un 404 definitivo
++            # — el frontend debe reintentar (cache miss). Devolvemos 503 con
++            # Retry-After para que el cliente sepa que es transitorio.
++            resp = jsonify({
++                "status": "cold_start",
++                "message": "Inicializando jornada — reintenta en 1s",
++                "cold_start": True,
++                "retry_after": 1000,
++            })
++            resp.status_code = 503
++            resp.headers["Retry-After"] = "1"
++            resp.headers["Cache-Control"] = "no-store"
++            return resp
+ 
+         jornadas_disponibles = _resolve_available_jornadas(conn)
+         jornada = requested_jornada or max_jornada
+diff --git a/static/js/events.4a92146d.js b/static/js/events.4a92146d.js
+new file mode 100644
+index 0000000..4604a0e
+--- /dev/null
++++ b/static/js/events.4a92146d.js
+@@ -0,0 +1,483 @@
++/* ==========================================================================
++   EVENTS — Bindings de eventos y inicializacion DOMContentLoaded.
++   Dependencias: todos los modulos anteriores.
++   ========================================================================== */
++
++
++/* ──────────────────────────────────────────
++   MICRO-INTERACCIONES GLOBALES
++   ────────────────────────────────────────── */
++
++function rippleHandler(event) {
++    const btn = event.currentTarget;
++    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++    if (btn.dataset.noRipple === 'true') return;
++    const rect = btn.getBoundingClientRect();
++    const size = Math.max(rect.width, rect.height) * 1.2;
++    const x = event.clientX - rect.left - size / 2;
++    const y = event.clientY - rect.top - size / 2;
++    const ripple = document.createElement('span');
++    ripple.className = 'ripple-effect';
++    ripple.style.cssText = `
++        width: ${size}px;
++        height: ${size}px;
++        left: ${x}px;
++        top: ${y}px;
++    `;
++    btn.style.position = 'relative';
++    btn.style.overflow = 'hidden';
++    btn.appendChild(ripple);
++    ripple.addEventListener('animationend', () => ripple.remove());
++}
++
++function addRippleToButtons() {
++    document.querySelectorAll('.primary-btn, .icon-btn, .cp-primary, .cp-secondary, .tab-btn, [data-page-action]').forEach(btn => {
++        if (!btn.dataset.rippleAdded) {
++            btn.addEventListener('mousedown', rippleHandler);
++            btn.dataset.rippleAdded = 'true';
++        }
++    });
++}
++
++function sparkleHoverHandler(event) {
++    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++    if (typeof window.sparkleAt !== 'function') return;
++    const target = event.currentTarget;
++    if (target.dataset.sparkleDisabled) return;
++    const rect = target.getBoundingClientRect();
++    window.sparkleAt(
++        rect.left + rect.width * 0.8,
++        rect.top + rect.height * 0.3,
++        target.dataset.sparkleColor || '#fbbf24'
++    );
++}
++
++function addSparkleToElements() {
++    document.querySelectorAll('.cp-primary, .cp-secondary, .primary-btn#save-quiniela-btn, .tension-row .clickable').forEach(el => {
++        if (!el.dataset.sparkleAdded) {
++            el.addEventListener('mouseenter', sparkleHoverHandler);
++            el.dataset.sparkleAdded = 'true';
++        }
++    });
++}
++
++function initMicroInteractions() {
++    addRippleToButtons();
++    addSparkleToElements();
++    // Re-aplicar cuando cambie el contenido del DOM
++    const observer = new MutationObserver(() => {
++        addRippleToButtons();
++        addSparkleToElements();
++    });
++    observer.observe(document.getElementById('matches-body') || document.body, {
++        childList: true,
++        subtree: true
++    });
++}
++
++function bindEvents() {
++    qs("jornada-nav")?.addEventListener("change", event => changeJornada(event.target.value));
++qs("refresh-btn")?.addEventListener("click", refreshData);
++    qs("save-quiniela-btn")?.addEventListener("click", savePredictions);
++    qs("cmdk-trigger")?.addEventListener("click", () => window.CommandPalette?.open());
++    qs("share-ticket-btn")?.addEventListener("click", shareTicket);
++    qs("share-sheet")?.addEventListener("click", event => {
++        if (event.target.closest("[data-share-close]")) {
++            closeShareSheet();
++            return;
++        }
++        const action = event.target.closest("[data-share-action]");
++        if (action) runShareAction(action.dataset.shareAction);
++    });
++    document.addEventListener("keydown", event => {
++        if (event.key === "Escape") closeShareSheet();
++    });
++    // Las pestañas fijas están fuera de matches-body; las acciones que se
++    // pintan dentro de las vistas se resuelven con el listener delegado.
++    document.querySelectorAll("[data-page-action]").forEach(button => {
++        if (!button.closest("#matches-body")) {
++            button.addEventListener("click", event => {
++                event.preventDefault();
++                openNewspaperPage(button.dataset.pageAction);
++            });
++        }
++    });
++    document.addEventListener("submit", event => {
++        if (event.target.matches("[data-porra-form]")) submitPorra(event);
++    });
++    qs("matches-body")?.addEventListener("click", event => {
++        const pageBtn = event.target.closest("[data-page-action]");
++        if (pageBtn) {
++            event.preventDefault();
++            openNewspaperPage(pageBtn.dataset.pageAction);
++            return;
++        }
++        const radarBtn = event.target.closest("[data-radar-match]");
++        if (radarBtn) {
++            const idx = Number.parseInt(radarBtn.dataset.radarMatch, 10);
++            if (Number.isNaN(idx)) return;
++            state.expandedMatch = state.expandedMatch === idx ? null : idx;
++            renderArena();
++            return;
++        }
++        const detailBtn = event.target.closest("[data-detail-toggle]");
++        if (detailBtn) {
++            const idx = Number.parseInt(detailBtn.dataset.matchIdx, 10);
++            if (Number.isNaN(idx)) return;
++            state.expandedMatch = state.expandedMatch === idx ? null : idx;
++            renderArena();
++            return;
++        }
++        const contestView = event.target.closest("[data-contest-view]");
++        if (contestView) {
++            state.contestView = contestView.dataset.contestView;
++            state.currentFilter = "ALL";
++            state.newspaperPage = "CONTEST";
++            syncUrlState();
++            renderArena();
++            return;
++        }
++        const monthBtn = event.target.closest("[data-month]");
++        if (monthBtn) {
++            changeContestMonth(monthBtn.dataset.month);
++            return;
++        }
++        const jornadaBtn = event.target.closest("[data-contest-jornada]");
++        if (jornadaBtn) {
++            changeContestJornada(jornadaBtn.dataset.contestJornada);
++            return;
++        }
++        const btn = event.target.closest(".clickable");
++        if (!btn) return;
++        if (!state.user) return showToast("Entra con Google para jugar.", "error");
++        if (!state.data || String(state.data.jornada) !== String(state.data.max_jornada) || state.data.is_locked) {
++            return showToast("Jornada bloqueada.", "error");
++        }
++        const idx = Number.parseInt(btn.dataset.matchIdx || btn.closest("[data-match-idx]")?.dataset.matchIdx, 10);
++        if (Number.isNaN(idx)) return;
++        if (!Array.isArray(state.my_signs)) state.my_signs = Array(15).fill("-");
++        // Si la quiniela ya esta guardada, el selector 1X2 no debe poder tocar
++        // los signos: primero hay que pulsar "Editar quiniela".
++        if ((btn.dataset.sign || btn.dataset.pleno) && hasSavedTicket() && !state.editMode && !state.draftDirty) {
++            return showToast('Tu quiniela ya esta guardada. Pulsa "Editar quiniela" para modificarla.', "error");
++        }
++        if (btn.dataset.pleno) {
++            openPlenoModal(idx);
++            return;
++        } else {
++            state.my_signs[idx] = state.my_signs[idx] === btn.dataset.sign ? "-" : btn.dataset.sign;
++        }
++        state.lastUserEdit = Date.now();
++        state.draftDirty = true;
++        persistDraft();
++        // CEO funnel 70%: primer pick sin login -> track + CTA brutal
++        try {
++            if (!state.user) {
++                const done = state.my_signs.filter(s => s !== "-").length;
++                if (done === 1 && !localStorage.getItem("lm_first_pick_tracked")) {
++                    localStorage.setItem("lm_first_pick_tracked", "1");
++                    if (typeof gtag === "function") gtag("event", "first_pick_anon", { value: 1 });
++                }
++                if (done >= 3 && done < 15 && !document.getElementById("anon-brutal-cta")) {
++                    const bar = document.createElement("div");
++                    bar.id = "anon-brutal-cta";
++                    bar.setAttribute("role", "alert");
++                    bar.style.cssText = "position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#1a1205;padding:10px 18px;border-radius:999px;font:800 0.85rem Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:9999;cursor:pointer";
++                    bar.textContent = `LLEVAS ${done}/15 — GUARDA Y HUMILLA A LA IA →`;
++                    bar.onclick = () => { document.querySelector('[data-page-action=\"TICKET\"]')?.click(); };
++                    document.body.appendChild(bar);
++                    setTimeout(() => bar.remove(), 8000);
++                }
++            }
++        } catch {}
++        if (typeof checkQuinielaCompletion === "function") checkQuinielaCompletion();
++        hydrateHero();
++        renderArena();
++    });
++    document.querySelectorAll(".tab-btn[data-standings]").forEach(button => {
++        button.addEventListener("click", () => {
++            document.querySelectorAll(".tab-btn[data-standings]").forEach(btn => btn.classList.remove("active"));
++            document.querySelectorAll(".standings-pane").forEach(pane => pane.classList.remove("active"));
++            button.classList.add("active");
++            qs(button.dataset.standings).classList.add("active");
++        });
++    });
++    document.addEventListener("change", event => {
++        const selector = event.target.closest("[data-porra-match]");
++        if (!selector || typeof loadPorra !== "function") return;
++        loadPorra(selector.value);
++    });
++    document.addEventListener("click", event => {
++        const porraSubmit = event.target.closest("[data-porra-submit]");
++        if (porraSubmit) {
++            submitPorra(event);
++            return;
++        }
++        if (event.target.closest("[data-open-profile]")) {
++            openProfileView();
++            return;
++        }
++        if (event.target.closest("[data-close-game]")) {
++            closeActiveGame();
++            return;
++        }
++        const expandContest = event.target.closest("[data-contest-expand]");
++        if (expandContest) {
++            const target = qs(expandContest.dataset.contestExpand);
++            if (!target) return;
++            const expanded = target.classList.toggle("is-visible");
++            expandContest.setAttribute("aria-expanded", String(expanded));
++            expandContest.textContent = expanded ? "Ocultar" : "Ver todos";
++            return;
++        }
++        const tab = event.target.closest("[data-league-tab]");
++        if (!tab) return;
++        const targetId = tab.dataset.leagueTab;
++        document.querySelectorAll("[data-league-tab]").forEach(btn => btn.classList.remove("active"));
++        document.querySelectorAll(".league-standings-pane").forEach(p => p.classList.remove("active"));
++        tab.classList.add("active");
++        const pane = qs("league-standings-" + targetId);
++        if (pane) pane.classList.add("active");
++    });
++    document.addEventListener("change", event => {
++        if (event.target.matches("[data-award-jornada]")) changeAwardJornada(event.target.value);
++        if (event.target.matches("[data-award-month]")) changeAwardMonth(event.target.value);
++    });
++    document.addEventListener("keydown", event => {
++        if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-open-profile][role='button']")) {
++            event.preventDefault();
++            openProfileView();
++        }
++    });
++}
++
++function resultsSignature(data) {
++    // Marcador y estado de los 15 partidos: cambia en cuanto entra un gol o
++    // un partido pasa a finalizado.
++    return (data?.partidos || [])
++        .map(match => [match.id, match.status || "", match.goles_local ?? "", match.goles_visitante ?? ""].join(":"))
++        .join("|");
++}
++
++function standingsSignature(data) {
++    const leagues = data?.multi_league_standings?.leagues || [];
++    return leagues
++        .map(league => `${league.name}:` + (league.teams || [])
++            .map(team => `${team.n}${team.pj}${team.pts}${team.gf}${team.gc}${team.en_juego ? "L" : ""}`)
++            .join(","))
++        .join("|");
++}
++
++async function refreshLiveSnapshot() {
++    if (!state.data || document.hidden) return;
++    try {
++        const liveSignature = data => [
++            ...(data?.partidos || []),
++            ...(data?.all_league_matches || []),
++            ...(data?.live_matches || [])
++        ]
++            .filter(match => !isExpiredLiveMatch(match) && (isLiveStatus(match.status) || isLiveMatch(match)))
++            .map(match => [
++                matchPairKey(match),
++                String(match.status || ""),
++                String(match.minuto || match.time || ""),
++                scoreOnly(match.marcador || match.score || match.scores?.score || "")
++            ].join(":"))
++            .sort()
++            .join("|");
++        const previousSignature = liveSignature(state.data);
++        const previousResults = resultsSignature(state.data);
++        const previousStandings = standingsSignature(state.data);
++        const fetcher = typeof fetchWithRetry === "function" ? fetchWithRetry : fetch;
++        const response = await fetcher(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`, { cache: "no-store" }, 2, 600);
++        if (!response.ok) return;
++        const freshData = await response.json();
++        if (String(freshData.jornada || "") !== String(state.jornada || "")) return;
++        const nextSignature = liveSignature(freshData);
++        const nextResults = resultsSignature(freshData);
++        const nextStandings = standingsSignature(freshData);
++        state.data = freshData;
++        logoAliasIndex = null;
++        logoCache.clear();
++        // Un partido que termina deja de ser "live": si solo mirasemos los
++        // partidos en juego, el resultado final y la clasificacion nunca se
++        // repintarian. Por eso tambien se comparan marcadores y clasificacion.
++        const changed = previousSignature !== nextSignature
++            || previousResults !== nextResults
++            || previousStandings !== nextStandings;
++        if (!changed) return;
++        // La Peña se recalcula con cada resultado cerrado.
++        if (previousResults !== nextResults && typeof ensureContestData === "function") {
++            try { await ensureContestData({ force: true }); } catch { /* no bloquea el repintado */ }
++        }
++        if (state.currentFilter === "LIVE" && patchLiveArena()) return;
++        if (state.currentFilter === "TICKET" && patchTicketArena()) return;
++        const pageX = window.scrollX;
++        const pageY = window.scrollY;
++        const tableScroll = qs("matches-body")?.querySelector(".arena-table-wrap")?.scrollLeft || 0;
++        hydrateHero();
++        renderArena();
++        window.scrollTo(pageX, pageY);
++        const nextTable = qs("matches-body")?.querySelector(".arena-table-wrap");
++        if (nextTable) nextTable.scrollLeft = tableScroll;
++        loadPorra();
++    } catch (error) {
++        console.warn("No se pudo refrescar el directo", error);
++    }
++}
++
++
++document.addEventListener("DOMContentLoaded", async () => {
++    bindEvents();
++    initMicroInteractions();
++    try { window.CommandPalette?.init(); } catch (error) { console.warn("[cmdk] init fallido", error); }
++    try { window.UXSignals?.init(); } catch (error) { console.warn("[ux] init fallido", error); }
++    await refreshData();
++    startLiveUpdates();
++    showWelcomeOnboarding();
++    document.addEventListener("visibilitychange", () => {
++        if (document.hidden) {
++            stopLiveUpdates();
++        } else {
++            startLiveUpdates();
++        }
++    });
++});
++
++let liveSSE = null;
++let liveRefreshTimer = null;
++let liveTransportKey = "";
++
++function livePollDelay() {
++    // 30s con partidos en juego. Tambien se refresca rapido en la ventana de
++    // una jornada (desde 10 min antes del primer saque hasta que todos han
++    // terminado): si solo mirasemos "hay algo en vivo" el primer gol del dia
++    // podia tardar dos minutos en aparecer.
++    if (hasLiveLeagueMatches()) return 30000;
++    return isJornadaWindowOpen() ? 45000 : 180000;
++}
++
++function isJornadaWindowOpen() {
++    const partidos = state.data?.partidos || [];
++    if (!partidos.length) return false;
++    const now = Date.now();
++    return partidos.some(match => {
++        const status = String(match.status || "").toUpperCase();
++        if (["FT", "FINISHED", "TERMINADO"].includes(status)) return false;
++        const kickoff = matchKickoffTime(match);
++        if (!kickoff) return false;
++        // Desde 10 minutos antes del saque hasta 3h despues.
++        return now >= kickoff - 600000 && now <= kickoff + 10800000;
++    });
++}
++
++function matchKickoffTime(match) {
++    const date = String(match.fecha_raw || "").slice(0, 10);
++    const time = String(match.hora || "").slice(0, 5);
++    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
++    // El saque llega en hora de Madrid: fuera de esa zona la ventana de
++    // jornada se abria (o cerraba) con horas de retraso.
++    return madridWallClockToMs(date, time);
++}
++
++function scheduleLivePoll(delay = livePollDelay()) {
++    if (liveRefreshTimer) window.clearTimeout(liveRefreshTimer);
++    if (document.hidden) {
++        liveRefreshTimer = null;
++        return;
++    }
++    liveRefreshTimer = window.setTimeout(async () => {
++        liveRefreshTimer = null;
++        await refreshLiveSnapshot();
++        scheduleLivePoll();
++    }, delay);
++}
++
++function startLivePolling() {
++    stopLiveSSE();
++    scheduleLivePoll();
++}
++
++function startLiveUpdates() {
++    const jornada = String(state.data?.jornada || "");
++    if (!jornada || document.hidden) return;
++    const useSSE = Boolean(state.data?.live_stream_enabled && "EventSource" in window);
++    const nextKey = `${jornada}:${useSSE ? "sse" : "poll"}`;
++    if (liveTransportKey === nextKey && (liveSSE || liveRefreshTimer)) return;
++
++    stopLiveUpdates();
++    liveTransportKey = nextKey;
++    if (useSSE) {
++        startLiveSSE(jornada);
++    } else {
++        startLivePolling();
++    }
++}
++
++function startLiveSSE(jornada) {
++    const url = `/api/live/stream?j=${encodeURIComponent(jornada)}`;
++    try {
++        liveSSE = new EventSource(url);
++        liveSSE.addEventListener("message", (event) => {
++            try {
++                const data = JSON.parse(event.data);
++                if (data.type === "live_update" && data.matches) {
++                    const hadLive = hasLiveLeagueMatches();
++                    state.data = { ...state.data, partidos: mergeLiveData(state.data.partidos, data.matches) };
++                    logoAliasIndex = null;
++                    logoCache.clear();
++                    const hasLive = hasLiveLeagueMatches();
++                    if (!hadLive && !hasLive) return;
++                    if (state.currentFilter === "LIVE" && patchLiveArena()) return;
++                    if (state.currentFilter === "TICKET" && patchTicketArena()) return;
++                    hydrateHero();
++                    renderArena();
++                    loadPorra();
++                }
++            } catch {
++                // A malformed event must not stop future live updates.
++            }
++        });
++        liveSSE.onerror = () => {
++            // Degrade once to bounded polling instead of reconnecting forever.
++            startLivePolling();
++            liveTransportKey = `${jornada}:poll`;
++        };
++    } catch {
++        startLivePolling();
++        liveTransportKey = `${jornada}:poll`;
++    }
++}
++
++function stopLiveSSE() {
++    if (liveSSE) {
++        liveSSE.close();
++        liveSSE = null;
++    }
++}
++
++function stopLiveUpdates() {
++    stopLiveSSE();
++    if (liveRefreshTimer) {
++        window.clearTimeout(liveRefreshTimer);
++        liveRefreshTimer = null;
++    }
++    liveTransportKey = "";
++}
++
++function mergeLiveData(partidos, liveMatches) {
++    if (!partidos || !liveMatches) return partidos || [];
++    const liveMap = new Map();
++    liveMatches.forEach((m) => {
++        const key = `${m.local}|${m.visitante}`;
++        liveMap.set(key, m);
++    });
++    return partidos.map((p) => {
++        const key = `${p.local || ""}|${p.visitante || ""}`;
++        const live = liveMap.get(key);
++        if (live) {
++            return { ...p, status: live.status, minuto: live.minuto };
++        }
++        return p;
++    });
++}
+diff --git a/static/js/events.js b/static/js/events.js
+index 55566e4..4604a0e 100644
+--- a/static/js/events.js
++++ b/static/js/events.js
+@@ -288,7 +288,8 @@ async function refreshLiveSnapshot() {
+         const previousSignature = liveSignature(state.data);
+         const previousResults = resultsSignature(state.data);
+         const previousStandings = standingsSignature(state.data);
+-        const response = await fetch(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`, { cache: "no-store" });
++        const fetcher = typeof fetchWithRetry === "function" ? fetchWithRetry : fetch;
++        const response = await fetcher(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`, { cache: "no-store" }, 2, 600);
+         if (!response.ok) return;
+         const freshData = await response.json();
+         if (String(freshData.jornada || "") !== String(state.jornada || "")) return;
+diff --git a/static/js/quantum_final.83f03039.js b/static/js/quantum_final.83f03039.js
+new file mode 100644
+index 0000000..b88230b
+--- /dev/null
++++ b/static/js/quantum_final.83f03039.js
+@@ -0,0 +1,748 @@
++/* ==========================================================================
++   QUANTUM FINAL — Init, refreshData, y funciones unicas.
++   Todos los modulos (utils, state, logos, navigation, live, standings,
++   contest, quiz, arena, events) se cargan ANTES que este archivo.
++   ========================================================================== */
++
++// --- Cold start helper: fetch con reintento exponencial (Tarea #1 - cache miss) ---
++// El primer arranque tras deploy puede devolver 503/404 mientras la BD calienta.
++// En vez de pintar "No se pudo cargar la Arena" al primer fallo, reintentamos
++// 3 veces con backoff 500/1000/2000ms y respetando Retry-After.
++async function fetchWithRetry(url, options = {}, retries = 3, baseDelay = 500) {
++    let lastError;
++    for (let attempt = 0; attempt < retries; attempt++) {
++        try {
++            const res = await fetch(url, options);
++            if (res.ok) return res;
++            const retryable = [429, 500, 502, 503, 504, 404].includes(res.status);
++            if (!retryable || attempt === retries - 1) {
++                const err = new Error(`HTTP ${res.status}`);
++                err.status = res.status;
++                err.response = res;
++                throw err;
++            }
++            const retryAfter = res.headers.get("Retry-After");
++            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} → ${res.status}, reintentando en ${delay}ms (intento ${attempt + 1}/${retries})`);
++            await new Promise(r => setTimeout(r, delay));
++        } catch (e) {
++            lastError = e;
++            // Errores de red (TypeError: Failed to fetch) también son reintentables
++            const isNetworkError = e instanceof TypeError || e.message === "Failed to fetch";
++            const isRetryableStatus = e.status && [429, 500, 502, 503, 504, 404].includes(e.status);
++            if (!isNetworkError && !isRetryableStatus) throw e;
++            if (attempt === retries - 1) throw e;
++            const delay = baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} error red → reintentando en ${delay}ms`, e.message);
++            await new Promise(r => setTimeout(r, delay));
++        }
++    }
++    throw lastError;
++}
++
++// --- refreshData: orquestacion principal de datos y render ---
++async function refreshData(options = {}) {
++    if (options.auto && Date.now() - state.lastUserEdit < 12000) return;
++    const preserveLocalTicket = Boolean(options.auto && (state.editMode || state.draftDirty));
++    const scrollState = options.auto ? {
++        x: window.scrollX,
++        y: window.scrollY,
++        tableX: qs("matches-body")?.querySelector(".arena-table-wrap")?.scrollLeft || 0
++    } : null;
++    // Mantener skeleton visible mientras reintentamos — no borrar state.data aún
++    const body = qs("matches-body");
++    if (!options.auto && !state.data && body && !body.querySelector(".skeleton")) {
++        body.innerHTML = typeof renderSkeletonLoading === "function" ? renderSkeletonLoading() : "";
++    }
++    try {
++        const userRequest = options.auto
++            ? Promise.resolve(null)
++            : fetchWithRetry("/api/user/status", { cache: "no-store" }, 2, 400);
++        const dataRequest = fetchWithRetry(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`, { cache: "no-store" }, 3, 500);
++        const [userRes, dataRes] = await Promise.all([userRequest, dataRequest]);
++        if (userRes) {
++            if (!userRes.ok) throw new Error(`User API ${userRes.status}`);
++            const userPayload = await userRes.json();
++            state.user = userPayload.user;
++            state.csrfToken = userPayload.csrf_token || "";
++        }
++        if (!dataRes.ok) throw new Error(`Data API ${dataRes.status}`);
++        const payload = await dataRes.json();
++        // Si el backend señaló cold_start dentro de un 200 (fallback), reintentar una vez más
++        if (payload && (payload.cold_start || payload.status === "cold_start") && !options._coldStartRetried) {
++            console.info("[cold-start] payload marca cold_start, reintentando en 900ms");
++            await new Promise(r => setTimeout(r, 900));
++            return refreshData({ ...options, _coldStartRetried: true });
++        }
++        state.data = payload;
++        logoAliasIndex = null;
++        logoCache.clear();
++        state.jornada = String(state.data.jornada || state.jornada);
++        if (typeof startLiveUpdates === "function") startLiveUpdates();
++
++        // 🎊 Welcome-back celebration for returning users
++        if (!options.auto && state.user && hasSavedTicket() && state.draftDirty === false) {
++            const done = state.my_signs.filter(s => s !== "-").length;
++            if (done === 15 && typeof window.launchConfetti === "function") {
++                setTimeout(() => {
++                    window.launchConfetti({ count: 30, spread: 50, duration: 2000, origin: { x: 0.5, y: 0.15 } });
++                }, 400);
++            }
++        }
++
++        await ensureViewAssets(currentMainView());
++        const patchedLiveView = Boolean(options.auto && state.currentFilter === "LIVE" && patchLiveArena());
++        const patchedTicketView = Boolean(
++            options.auto
++            && state.currentFilter === "TICKET"
++            && typeof patchTicketArena === "function"
++            && patchTicketArena()
++        );
++        if (patchedLiveView || patchedTicketView) return;
++
++        hydrateJornadaNav();
++        hydrateUserSigns({ preserveLocalTicket });
++        hydrateHero();
++        updateAuthUI();
++        renderArena();
++        if (scrollState) {
++            window.scrollTo(scrollState.x, scrollState.y);
++            const table = qs("matches-body")?.querySelector(".arena-table-wrap");
++            if (table) table.scrollLeft = scrollState.tableX;
++        }
++    } catch (error) {
++        console.error(error);
++        if (options.auto && state.data) {
++            const now = Date.now();
++            if (now - state.refreshErrorNotifiedAt > 60000) {
++                showToast("No se pudo actualizar en segundo plano. Mantengo la ultima version cargada.", "error");
++                state.refreshErrorNotifiedAt = now;
++            }
++            return;
++        }
++        const body = qs("matches-body");
++        if (body) {
++            const status = error?.status || error?.response?.status;
++            const isColdStart = status === 503 || status === 504 || status === 404;
++            const message = error?.message || error?.statusText || "Error desconocido";
++            const hint = isColdStart
++                ? "La jornada se está iniciando — he reintentado 3 veces. Pulsa reintentar."
++                : "Revisa que Flask y la base de datos estén activos.";
++            body.innerHTML = `<div class="empty-state">
++                <p>No se pudo cargar la Arena (HTTP ${status || "?"}). ${escapeHtml(message)}.</p>
++                <p style="margin:8px 0;color:#64748b;font-size:13px">${hint}</p>
++                <button onclick="refreshData()" class="primary-btn" style="margin-top:12px">Reintentar ahora</button>
++                <p style="margin-top:10px;color:#94a3b8;font-size:12px">Se reintentó automáticamente 3 veces con backoff. Si usas 3G, espera 2s y vuelve a pulsar.</p>
++            </div>`;
++        }
++    }
++}
++
++async function ensureQ15Directo() {
++    const jornada = String(state.data?.jornada || state.jornada || "");
++    if (!jornada || state.q15DirectoJornada === jornada) return false;
++    try {
++        const response = await fetch(`/api/q15/directo?j=${encodeURIComponent(jornada)}`);
++        state.q15Directo = response.ok ? await response.json() : {};
++    } catch {
++        state.q15Directo = {};
++    }
++    state.q15DirectoJornada = jornada;
++    return true;
++}
++
++// --- Porra ---
++// The selected match belongs to the user: never let the API's automatic
++// fallback decide where an exact-score prediction is saved.
++let porraSelectedMatchId = null;
++
++async function loadPorra(partidoId = porraSelectedMatchId) {
++    const bodies = [qs("porra-body"), qs("ticket-porra-body")].filter(Boolean);
++    const summary = qs("porra-summary");
++    const labels = document.querySelectorAll("[data-porra-label]");
++    if (!state.data) return;
++    if (!bodies.length && !qs("cover-porra-content")) return;
++    try {
++        const requestedMatch = partidoId ? `&pid=${encodeURIComponent(partidoId)}` : "";
++        const controller = new AbortController();
++        const timeout = setTimeout(() => controller.abort(), 8000);
++        const res = await fetch(`/api/porra?j=${encodeURIComponent(state.data.jornada)}${requestedMatch}`, { signal: controller.signal });
++        clearTimeout(timeout);
++        const data = await res.json();
++        if (typeof hydrateCoverPorra === "function") hydrateCoverPorra(data);
++        if (!bodies.length) return;
++        if (!res.ok || data.status !== "ok" || !data.enabled) {
++            bodies.forEach(body => {
++                body.innerHTML = `<div class="empty-state">${escapeHtml(data.message || "Sin porra disponible.")}</div>`;
++            });
++            return;
++        }
++        const match = data.match || {};
++        porraSelectedMatchId = Number(match.partido_id) || null;
++        labels.forEach(label => { label.textContent = data.label || "Porra"; });
++        const mine = data.mine || {};
++        const homeValue = mine.goles_local ?? "";
++        const awayValue = mine.goles_visitante ?? "";
++        const hasMine = mine.goles_local !== undefined && mine.goles_local !== null && mine.goles_visitante !== undefined && mine.goles_visitante !== null;
++        if (summary) summary.textContent = data.locked ? "Cerrada" : "Marcador exacto";
++        const totalEntries = Number(data.total_entries || 0);
++        const distribution = data.distribution || [];
++        const porraShare = distribution.slice(0, 3).map(item => {
++            const score = `${Number(item.goles_local)}-${Number(item.goles_visitante)}`;
++            const percent = Number(item.percent || 0);
++            return `
++                <span class="porra-share-pill">
++                    <b>${escapeHtml(score)}</b>
++                    <em>${totalEntries === 1 ? "&uacute;nico pron&oacute;stico" : `${percent.toLocaleString("es-ES", { maximumFractionDigits: 0 })}%`}</em>
++                </span>`;
++        }).join("");
++        const shareBlock = totalEntries
++            ? `<div class="porra-share">
++                    <span class="porra-share-total">${totalEntries} participante${totalEntries === 1 ? "" : "s"}</span>
++                    ${porraShare}
++               </div>`
++            : "";
++        const matchOptions = (data.available || []).map(item => {
++            const id = Number(item.partido_id);
++            const selected = id === Number(match.partido_id) ? " selected" : "";
++            return `<option value="${id}"${selected}>${id}. ${escapeHtml(getShortName(item.local || "Local"))} - ${escapeHtml(getShortName(item.visitante || "Visitante"))}</option>`;
++        }).join("");
++        const selector = matchOptions
++            ? `<label class="porra-selector-label">
++                    <select class="porra-selector" data-porra-match aria-label="Elige el partido para tu porra — +2 puntos extra si aciertas el marcador exacto">${matchOptions}</select>
++                    <small class="porra-hint" style="display:block;color:#94a3b8;font-size:0.56rem;margin-top:3px;line-height:1.3;">Marcador exacto: <b style="color:#f5b53f;">+2 puntos</b>.</small>
++               </label>`
++            : "";
++        const renderBody = (body, index) => {
++            const suffix = index ? "-ticket" : "";
++            const matchLabel = `${escapeHtml(getShortName(match.local || "Local"))} vs ${escapeHtml(getShortName(match.visitante || "Visitante"))}`;
++
++            // Show change status
++            let changeStatus = "";
++            if (hasMine && !data.jornada_locked) {
++                const changes = data.my_changes || 0;
++                if (changes === 0) {
++                    changeStatus = `<small class="porra-change-info">Puedes cambiar 1 vez</small>`;
++                } else {
++                    changeStatus = `<small class="porra-change-info locked">Ya no puedes cambiar</small>`;
++                }
++            }
++
++            body.innerHTML = `
++            <div class="porra-match-header">
++                <strong>${matchLabel}</strong>
++                ${selector}
++            </div>
++            ${hasMine
++                ? `<div class="porra-saved">
++                        <span>Tu porra</span>
++                        <b>${Number(homeValue)}-${Number(awayValue)}</b>
++                   </div>`
++                : data.locked
++                    ? `<div class="porra-saved porra-closed">
++                            <span>Porra cerrada</span>
++                       </div>`
++                : `<form id="porra-form${suffix}" class="porra-form" data-porra-form data-partido-id="${Number(match.partido_id)}">
++                        <input id="porra-home${suffix}" data-porra-home type="number" min="0" max="15" inputmode="numeric" aria-label="Goles de ${escapeHtml(match.local || "local")}" value="${escapeHtml(homeValue)}">
++                        <span>-</span>
++                        <input id="porra-away${suffix}" data-porra-away type="number" min="0" max="15" inputmode="numeric" aria-label="Goles de ${escapeHtml(match.visitante || "visitante")}" value="${escapeHtml(awayValue)}">
++                        <button type="button" data-porra-submit>${data.auth ? "OK" : "Entrar"}</button>
++                        <small class="porra-form-status" data-porra-status aria-live="polite"></small>
++                   </form>`}
++            ${changeStatus}
++            ${shareBlock}`;
++        };
++        bodies.forEach(renderBody);
++    } catch (error) {
++        if (typeof hydrateCoverPorra === "function") hydrateCoverPorra({ enabled: false, message: "No se pudo cargar la porra" });
++        bodies.forEach(body => {
++            body.innerHTML = `<div class="empty-state">No se pudo cargar la porra.</div>`;
++        });
++    }
++}
++
++async function submitPorra(event) {
++    event.preventDefault();
++    if (!state.user) {
++        window.location.href = "/login/google";
++        return;
++    }
++    const form = event.target.closest("[data-porra-form]");
++    const homeInput = form?.querySelector("[data-porra-home]");
++    const awayInput = form?.querySelector("[data-porra-away]");
++    const submitButton = form?.querySelector("[data-porra-submit]");
++    const formStatus = form?.querySelector("[data-porra-status]");
++    if (!homeInput || !awayInput) return;
++    if (submitButton?.disabled) return;
++    if (submitButton) {
++        submitButton.disabled = true;
++        submitButton.textContent = "Guardando...";
++    }
++    if (formStatus) formStatus.textContent = "";
++    try {
++        const payload = {
++                jornada: state.data.jornada || state.jornada,
++                partido_id: form?.dataset.partidoId || porraSelectedMatchId,
++                goles_local: homeInput.value,
++                goles_visitante: awayInput.value
++        };
++        const sendPorra = async () => {
++            const response = await fetch("/api/porra", {
++                method: "POST",
++                headers: authenticatedJsonHeaders(),
++                body: JSON.stringify(payload)
++            });
++            return { response, data: await response.json() };
++        };
++        let { response: res, data } = await sendPorra();
++        if (res.status === 403 && String(data.error || data.message || "").toLowerCase().includes("seguridad")) {
++            const statusResponse = await fetch("/api/user/status", { cache: "no-store" });
++            const statusPayload = await statusResponse.json();
++            state.user = statusPayload.user || state.user;
++            state.csrfToken = statusPayload.csrf_token || "";
++            ({ response: res, data } = await sendPorra());
++        }
++        if (!res.ok || data.status !== "ok") throw new Error(data.message || data.error || "No se pudo guardar la porra.");
++        await loadPorra();
++        // 🎊 Mini celebracion por participar en la porra
++        if (typeof window.launchConfetti === "function") {
++            window.launchConfetti({ count: 15, spread: 30, duration: 1200 });
++        }
++        if (typeof SoundManager !== "undefined" && SoundManager.playSave) {
++            SoundManager.playSave();
++        }
++        showToast("Porra guardada.");
++    } catch (error) {
++        if (submitButton) {
++            submitButton.disabled = false;
++            submitButton.textContent = state.user ? "OK" : "Entrar";
++        }
++        if (formStatus) formStatus.textContent = error.message;
++        showToast(error.message, "error");
++    }
++}
++
++// --- Guardar y compartir quiniela ---
++function showWelcomeOnboarding() {
++    // El onboarding multi-paso vive en onboarding.js para no duplicar el modal.
++}
++
++async function savePredictions() {
++    if (!state.user) return showToast("Entra con Google para guardar.", "error");
++    if (!state.data || String(state.data.jornada) !== String(state.data.max_jornada) || state.data.is_locked) {
++        return showToast("Esta jornada ya esta cerrada.", "error");
++    }
++    if (hasSavedTicket() && !state.editMode && !state.draftDirty) {
++        state.editMode = true;
++        hydrateHero();
++        renderArena();
++        return showToast(`Puedes editar hasta ${state.data.edit_deadline || "el inicio del primer partido"}.`);
++    }
++
++    const signs = Array.isArray(state.my_signs) ? state.my_signs.slice(0, 15) : [];
++    const missingMatches = Array.from({ length: 15 }, (_, index) => index)
++        .filter(index => !signs[index] || signs[index] === "-");
++    if (missingMatches.length) {
++        const missingLabel = missingMatches.map(index => index + 1).join(", ");
++        return showToast(`Completa la quiniela. Falta${missingMatches.length === 1 ? "" : "n"}: ${missingLabel}.`, "error");
++    }
++
++    const saveButton = qs("save-quiniela-btn");
++    if (saveButton?.disabled) return;
++    if (saveButton) {
++        saveButton.disabled = true;
++        saveButton.setAttribute("aria-busy", "true");
++        saveButton.textContent = "Guardando...";
++    }
++
++    const payload = { user_id: state.user.id, jornada: state.data.jornada, signos: signs };
++    const sendPredictions = async () => {
++        const response = await fetch("/api/predicciones/save", {
++            method: "POST",
++            headers: authenticatedJsonHeaders(),
++            body: JSON.stringify(payload)
++        });
++        const contentType = response.headers.get("content-type") || "";
++        const result = contentType.includes("application/json") ? await response.json() : {};
++        return { response, result };
++    };
++
++    try {
++        let { response: res, result } = await sendPredictions();
++        const securityExpired = res.status === 403
++            && String(result.error || result.message || "").toLowerCase().includes("seguridad");
++        if (securityExpired) {
++            const statusResponse = await fetch("/api/user/status", { cache: "no-store" });
++            if (!statusResponse.ok) throw new Error("La sesion ha caducado. Recarga la pagina e inicia sesion de nuevo.");
++            const statusPayload = await statusResponse.json();
++            if (!statusPayload.user || !statusPayload.csrf_token) {
++                throw new Error("La sesion ha caducado. Inicia sesion de nuevo.");
++            }
++            state.user = statusPayload.user;
++            state.csrfToken = statusPayload.csrf_token;
++            payload.user_id = state.user.id;
++            ({ response: res, result } = await sendPredictions());
++        }
++        if (!res.ok || result.status !== "ok") {
++            throw new Error(result.message || result.error || `No se pudo guardar (error ${res.status}).`);
++        }
++        const savedSigns = Array.isArray(result.signos) && result.signos.length === 15
++            ? result.signos.map(sign => sign || "-")
++            : signs;
++        clearDraft();
++        state.my_signs = [...savedSigns];
++        state.server_signs = [...savedSigns];
++        if (state.data) state.data.ticket_guardado = true;
++        state.editMode = false;
++        hydrateHero();
++        renderArena();
++
++        showToast("Quiniela guardada correctamente.");
++        try {
++            if (typeof window.launchBigConfetti === "function") {
++                window.launchBigConfetti();
++            } else if (typeof window.launchConfetti === "function") {
++                window.launchConfetti({ count: 50, spread: 80, duration: 2500 });
++            }
++            if (typeof SoundManager !== "undefined" && SoundManager.playSave) SoundManager.playSave();
++        } catch (effectError) {
++            console.warn("No se pudo mostrar la celebracion del guardado", effectError);
++        }
++        await refreshData();
++    } catch (error) {
++        const message = error instanceof Error && error.message
++            ? error.message
++            : "No se pudo guardar la quiniela. Comprueba tu conexion e intentalo de nuevo.";
++        showToast(message, "error");
++        if (typeof SoundManager !== "undefined" && SoundManager.playError) SoundManager.playError();
++    } finally {
++        if (saveButton) {
++            saveButton.removeAttribute("aria-busy");
++            hydrateHero();
++        }
++    }
++}
++
++async function adminRefreshAll() {
++    if (!state.user?.is_admin && !state.data?.is_admin) return showToast("Solo admin.", "error");
++    showToast("Actualizando todo en el servidor...");
++    try {
++        const response = await fetch("/api/admin/refresh-all", {
++            method: "POST",
++            headers: { "X-CSRF-Token": state.csrfToken || "" },
++        });
++        if (!response.ok) throw new Error(`HTTP ${response.status}`);
++        const payload = await response.json();
++        const s = payload.summary || {};
++        const parts = [];
++        if (s.standings && s.standings !== "error") {
++            const spanish = (s.standings.spanish || []).length;
++            const external = (s.standings.external || []).length;
++            const expected = Number(s.standings.expected_count || 0);
++            parts.push(expected
++                ? `${spanish + external}/${expected} clasificaciones`
++                : `${spanish + external} clasificaciones`);
++        }
++        if (typeof s.agenda_matches === "number") parts.push(`${s.agenda_matches} partidos hoy`);
++        if (typeof s.panel_matches === "number" && s.panel_matches > 0) parts.push(`${s.panel_matches} en directo`);
++
++        const skipped = Array.isArray(payload.skipped) ? payload.skipped : [];
++        const failures = Array.isArray(payload.failures) ? payload.failures : [];
++        const partial = payload.status !== "ok" || skipped.length > 0 || failures.length > 0;
++        if (partial) {
++            const completed = parts.length ? ` Completado: ${parts.join(", ")}.` : "";
++            showToast(`${payload.message || "Actualización parcial."}${completed}`, "error");
++        } else {
++            showToast(parts.length ? `Actualizado: ${parts.join(", ")}.` : "Servidor actualizado.");
++        }
++        await refreshData();
++    } catch {
++        showToast("No se pudo actualizar todo. Revisa los fallos del servidor.", "error");
++    }
++}
++
++function buildShareText() {
++    const matches = state.data?.partidos || [];
++    const done = (state.my_signs || []).filter(sign => sign && sign !== "-").length;
++    return [
++        "🏆 LIGA DE MAESTROS | Mis pronosticos J" + (state.data?.jornada || ""),
++        done + "/15 marcados · Humanos vs IA",
++        ...matches.slice(0, 15).map((match, idx) => {
++            const sign = state.my_signs[idx] && state.my_signs[idx] !== "-" ? state.my_signs[idx] : "sin marcar";
++            const local = match.local || "Local";
++            const away = match.visitante || "Visitante";
++            const label = idx === 14 ? "Pleno al 15" : local + " - " + away;
++            return (idx + 1) + ". " + label + " -> " + sign;
++        }),
++        "🔥 ¿Puedes ganar a la IA? ligademaestros",
++    ].join("\n");
++}
++
++function sharePageUrl() {
++    try {
++        const url = new URL(window.location.href);
++        url.searchParams.delete("contest");
++        return url.toString();
++    } catch {
++        return window.location.origin + "/";
++    }
++}
++
++function closeShareSheet() {
++    const sheet = qs("share-sheet");
++    if (!sheet) return;
++    sheet.hidden = true;
++    sheet.classList.remove("is-open");
++}
++
++function openShareSheet() {
++    const sheet = qs("share-sheet");
++    const preview = qs("share-sheet-preview");
++    if (!sheet || !preview) return false;
++    preview.textContent = buildShareText();
++    const nativeBtn = sheet.querySelector("[data-share-action='native']");
++    if (nativeBtn) nativeBtn.hidden = !navigator.share;
++    sheet.hidden = false;
++    requestAnimationFrame(() => sheet.classList.add("is-open"));
++    sheet.querySelector(".share-sheet-close")?.focus();
++    return true;
++}
++
++function copyShareText(text) {
++    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
++    const area = document.createElement("textarea");
++    area.value = text;
++    area.setAttribute("readonly", "");
++    area.style.position = "fixed";
++    area.style.left = "-9999px";
++    document.body.appendChild(area);
++    area.select();
++    document.execCommand("copy");
++    area.remove();
++    return Promise.resolve();
++}
++
++function runShareAction(action) {
++    const text = qs("share-sheet-preview")?.textContent || buildShareText();
++    const shareUrl = sharePageUrl();
++    const payload = text + "\n" + shareUrl;
++    if (action === "copy") {
++        copyShareText(payload).then(() => {
++            showToast("Pronostico copiado.");
++            if (typeof SoundManager !== "undefined" && SoundManager.playSave) SoundManager.playSave();
++            closeShareSheet();
++        }).catch(() => showToast("No se pudo copiar el pronostico.", "error"));
++        return;
++    }
++    if (action === "twitter") {
++        window.open(
++            "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(shareUrl),
++            "_blank",
++            "noopener,noreferrer"
++        );
++        showToast("Abriendo X...");
++        return;
++    }
++    if (action === "whatsapp") {
++        window.open("https://wa.me/?text=" + encodeURIComponent(payload), "_blank", "noopener,noreferrer");
++        showToast("Abriendo WhatsApp...");
++        return;
++    }
++    if (action === "image" && window.TicketImage) {
++        showToast("Generando imagen del boleto...");
++        window.TicketImage.share(state).then(() => {
++            if (typeof SoundManager !== "undefined" && SoundManager.playSave) SoundManager.playSave();
++            closeShareSheet();
++        }).catch(() => showToast("No se pudo generar la imagen.", "error"));
++        return;
++    }
++    if (action === "imageVs" && window.TicketImage?.shareVs) {
++        showToast("Generando duelo vs IA...");
++        window.TicketImage.shareVs(state).then(() => {
++            if (typeof SoundManager !== "undefined" && SoundManager.playSave) SoundManager.playSave();
++            closeShareSheet();
++        }).catch(() => showToast("No se pudo generar el duelo.", "error"));
++        return;
++    }
++    if (action === "native" && navigator.share) {
++        navigator.share({ title: "Liga de Maestros", text, url: shareUrl }).catch(error => {
++            if (error && error.name === "AbortError") return;
++            showToast("No se pudo abrir el panel nativo.", "error");
++        });
++    }
++}
++
++function shareTicket() {
++    if (!state.user) return showToast("Entra con Google para compartir.", "error");
++    const matches = state.data.partidos || [];
++    if (!matches.length) return showToast("No hay jornada cargada para compartir.", "error");
++    if (typeof window.launchConfetti === "function") {
++        window.launchConfetti({ count: 30, spread: 70, duration: 2000 });
++    }
++    if (openShareSheet()) return;
++    copyShareText(buildShareText() + "\n" + sharePageUrl()).then(() => {
++        showToast("Pronostico copiado.");
++    }).catch(() => showToast("No se pudo copiar el pronostico.", "error"));
++}
++
++const NEWS_SOURCE_SHORT = {
++    "mundo deportivo": "MD",
++    mundodeportivo: "MD",
++    marca: "MARCA",
++    as: "AS",
++    sport: "SPORT",
++    laliga: "LIGA",
++    "la liga": "LIGA",
++};
++
++function newsTimeLabel() {
++    // Hora/fecha ocultada a proposito: el usuario pide que el texto quepa y este bien resumido.
++    return "";
++}
++
++function newsCategoryLabel(value) {
++    const raw = String(value || "noticia").trim();
++    if (!raw) return "NOTICIA";
++    const short = NEWS_SOURCE_SHORT[raw.toLowerCase()];
++    return (short || raw).toUpperCase();
++}
++
++function normalizeNewsRows(payload) {
++    const data = payload && typeof payload === "object" ? payload : {};
++    const novedades = Array.isArray(data.novedades) ? data.novedades : [];
++    const bajas = Array.isArray(data.bajas) ? data.bajas : [];
++    const items = Array.isArray(data.items) ? data.items : [];
++    const rows = [];
++    const pushRow = row => {
++        const title = String(row.title || "").trim();
++        if (!title) return;
++        rows.push({
++            category: newsCategoryLabel(row.category),
++            title,
++            time: row.time || "",
++            url: row.url || "",
++            kind: row.kind || "rss",
++        });
++    };
++    if (novedades.length) {
++        novedades.forEach(item => pushRow({
++            category: item.categoria || item.source || "noticia",
++            title: item.texto || item.title || "",
++            time: newsTimeLabel(item.published_at),
++            url: item.link || "",
++            kind: "novedad",
++        }));
++    } else {
++        items.forEach(item => pushRow({
++            category: item.source || item.category || "noticia",
++            title: item.title || "",
++            time: newsTimeLabel(item.published_at || item.time),
++            url: item.link || item.url || "",
++            kind: "rss",
++        }));
++    }
++    bajas.forEach(item => {
++        const who = [item.jugador, item.equipo].filter(Boolean).join(" · ");
++        const note = String(item.nota || "").trim();
++        pushRow({
++            category: item.estado || "baja",
++            title: note ? `${who} — ${note}` : who,
++            time: "",
++            url: item.link || "",
++            kind: "baja",
++        });
++    });
++    return rows;
++}
++
++function renderNewsRows(rows, options = {}) {
++    const limit = Number.isFinite(options.limit) ? options.limit : rows.length;
++    const showTime = Boolean(options.showTime);
++    return rows.slice(0, Math.max(0, limit)).map(row => {
++        const extra = row.kind === "baja" ? " is-availability" : "";
++        const cat = escapeHtml(row.category || "•");
++        const title = escapeHtml(row.title || "");
++        const time = showTime ? escapeHtml(row.time || "") : "";
++        const inner = time
++            ? `<span class="cx-news-cat">${cat}</span><span class="cx-news-text">${title}</span><span class="cx-news-time">${time}</span>`
++            : `<span class="cx-news-cat">${cat}</span><span class="cx-news-text">${title}</span>`;
++        if (row.url) {
++            return `<a class="cx-news-item${extra}" href="${escapeHtml(row.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
++        }
++        return `<div class="cx-news-item${extra}">${inner}</div>`;
++    }).join("");
++}
++
++function newsEmptyHtml(message) {
++    return `<div class="cx-empty">${escapeHtml(message)}</div>`;
++}
++
++async function fetchNewsRadar(force = false) {
++    const freshEnough = !force
++        && state.newsRadar
++        && Date.now() - Number(state.newsRadarFetchedAt || 0) < 60000;
++    if (freshEnough) return state.newsRadar;
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 8000);
++    try {
++        const res = await fetch("/api/noticias/radar", { signal: controller.signal });
++        if (!res.ok) throw new Error(`HTTP ${res.status}`);
++        const data = await res.json();
++        state.newsRadar = data;
++        state.newsRadarFetchedAt = Date.now();
++        return data;
++    } finally {
++        clearTimeout(timeout);
++    }
++}
++
++function paintNewsTargets(rows, message = "Sin novedades de momento") {
++    const empty = newsEmptyHtml(message);
++    const cover = qs("cover-news-content");
++    const page = qs("news-page-content");
++    if (cover) cover.innerHTML = rows.length ? renderNewsRows(rows, { limit: 4 }) : empty;
++    if (page) page.innerHTML = rows.length ? renderNewsRows(rows) : empty;
++}
++
++async function loadNewsBriefing() {
++    const cover = qs("cover-news-content");
++    const page = qs("news-page-content");
++    if (!cover && !page) return;
++    const cached = normalizeNewsRows(state.newsRadar || {});
++    if (cached.length) paintNewsTargets(cached);
++    try {
++        const data = await fetchNewsRadar();
++        const rows = normalizeNewsRows(data);
++        paintNewsTargets(rows);
++    } catch {
++        if (!cached.length) paintNewsTargets([], "Sin novedades de momento");
++    }
++}
++
++function renderNewsPage() {
++    const rows = normalizeNewsRows(state.newsRadar || {});
++    const fetched = state.newsRadar?.fetched_at ? `Act. ${escapeHtml(String(state.newsRadar.fetched_at))}` : "PRENSA";
++    return `<div class="cx cx-news-page">
++        <header class="cx-top">
++            <div class="cx-top-left">
++                <div class="cx-top-id">
++                    <span class="cx-top-eyebrow">RADAR DE PRENSA</span>
++                    <h1 class="cx-top-title">ÚLTIMA HORA</h1>
++                </div>
++            </div>
++            <div class="cx-top-right">
++                <span class="cx-pn-meta">${fetched}</span>
++                <a class="cx-cta-primary" href="/" data-page-action="ALL">← PORTADA</a>
++            </div>
++        </header>
++        <section class="cx-panel cx-news cx-accent-pink" aria-label="Últimas noticias">
++            <header class="cx-pn-head">
++                <span class="cx-pn-eyebrow">TITULARES</span>
++                <span class="cx-pn-meta">${rows.length ? `${rows.length} NOTICIA${rows.length === 1 ? "" : "S"}` : "CARGANDO"}</span>
++            </header>
++            <div class="cx-pn-body" id="news-page-content">
++                ${rows.length ? renderNewsRows(rows) : newsEmptyHtml("Cargando últimas noticias…")}
++            </div>
++        </section>
++    </div>`;
++}
+diff --git a/static/js/quantum_final.js b/static/js/quantum_final.js
+index d066694..b88230b 100644
+--- a/static/js/quantum_final.js
++++ b/static/js/quantum_final.js
+@@ -4,6 +4,42 @@
+    contest, quiz, arena, events) se cargan ANTES que este archivo.
+    ========================================================================== */
+ 
++// --- Cold start helper: fetch con reintento exponencial (Tarea #1 - cache miss) ---
++// El primer arranque tras deploy puede devolver 503/404 mientras la BD calienta.
++// En vez de pintar "No se pudo cargar la Arena" al primer fallo, reintentamos
++// 3 veces con backoff 500/1000/2000ms y respetando Retry-After.
++async function fetchWithRetry(url, options = {}, retries = 3, baseDelay = 500) {
++    let lastError;
++    for (let attempt = 0; attempt < retries; attempt++) {
++        try {
++            const res = await fetch(url, options);
++            if (res.ok) return res;
++            const retryable = [429, 500, 502, 503, 504, 404].includes(res.status);
++            if (!retryable || attempt === retries - 1) {
++                const err = new Error(`HTTP ${res.status}`);
++                err.status = res.status;
++                err.response = res;
++                throw err;
++            }
++            const retryAfter = res.headers.get("Retry-After");
++            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} → ${res.status}, reintentando en ${delay}ms (intento ${attempt + 1}/${retries})`);
++            await new Promise(r => setTimeout(r, delay));
++        } catch (e) {
++            lastError = e;
++            // Errores de red (TypeError: Failed to fetch) también son reintentables
++            const isNetworkError = e instanceof TypeError || e.message === "Failed to fetch";
++            const isRetryableStatus = e.status && [429, 500, 502, 503, 504, 404].includes(e.status);
++            if (!isNetworkError && !isRetryableStatus) throw e;
++            if (attempt === retries - 1) throw e;
++            const delay = baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} error red → reintentando en ${delay}ms`, e.message);
++            await new Promise(r => setTimeout(r, delay));
++        }
++    }
++    throw lastError;
++}
++
+ // --- refreshData: orquestacion principal de datos y render ---
+ async function refreshData(options = {}) {
+     if (options.auto && Date.now() - state.lastUserEdit < 12000) return;
+@@ -13,14 +49,17 @@ async function refreshData(options = {}) {
+         y: window.scrollY,
+         tableX: qs("matches-body")?.querySelector(".arena-table-wrap")?.scrollLeft || 0
+     } : null;
++    // Mantener skeleton visible mientras reintentamos — no borrar state.data aún
++    const body = qs("matches-body");
++    if (!options.auto && !state.data && body && !body.querySelector(".skeleton")) {
++        body.innerHTML = typeof renderSkeletonLoading === "function" ? renderSkeletonLoading() : "";
++    }
+     try {
+         const userRequest = options.auto
+             ? Promise.resolve(null)
+-            : fetch("/api/user/status");
+-        const [userRes, dataRes] = await Promise.all([
+-            userRequest,
+-            fetch(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`)
+-        ]);
++            : fetchWithRetry("/api/user/status", { cache: "no-store" }, 2, 400);
++        const dataRequest = fetchWithRetry(`/api/liga/data?j=${encodeURIComponent(state.jornada)}`, { cache: "no-store" }, 3, 500);
++        const [userRes, dataRes] = await Promise.all([userRequest, dataRequest]);
+         if (userRes) {
+             if (!userRes.ok) throw new Error(`User API ${userRes.status}`);
+             const userPayload = await userRes.json();
+@@ -28,7 +67,14 @@ async function refreshData(options = {}) {
+             state.csrfToken = userPayload.csrf_token || "";
+         }
+         if (!dataRes.ok) throw new Error(`Data API ${dataRes.status}`);
+-        state.data = await dataRes.json();
++        const payload = await dataRes.json();
++        // Si el backend señaló cold_start dentro de un 200 (fallback), reintentar una vez más
++        if (payload && (payload.cold_start || payload.status === "cold_start") && !options._coldStartRetried) {
++            console.info("[cold-start] payload marca cold_start, reintentando en 900ms");
++            await new Promise(r => setTimeout(r, 900));
++            return refreshData({ ...options, _coldStartRetried: true });
++        }
++        state.data = payload;
+         logoAliasIndex = null;
+         logoCache.clear();
+         state.jornada = String(state.data.jornada || state.jornada);
+@@ -77,8 +123,17 @@ async function refreshData(options = {}) {
+         const body = qs("matches-body");
+         if (body) {
+             const status = error?.status || error?.response?.status;
++            const isColdStart = status === 503 || status === 504 || status === 404;
+             const message = error?.message || error?.statusText || "Error desconocido";
+-            body.innerHTML = `<div class="empty-state">No se pudo cargar la Arena (HTTP ${status || "?"}). ${escapeHtml(message)}. Revisa que Flask y la base de datos esten activos.</div>`;
++            const hint = isColdStart
++                ? "La jornada se está iniciando — he reintentado 3 veces. Pulsa reintentar."
++                : "Revisa que Flask y la base de datos estén activos.";
++            body.innerHTML = `<div class="empty-state">
++                <p>No se pudo cargar la Arena (HTTP ${status || "?"}). ${escapeHtml(message)}.</p>
++                <p style="margin:8px 0;color:#64748b;font-size:13px">${hint}</p>
++                <button onclick="refreshData()" class="primary-btn" style="margin-top:12px">Reintentar ahora</button>
++                <p style="margin-top:10px;color:#94a3b8;font-size:12px">Se reintentó automáticamente 3 veces con backoff. Si usas 3G, espera 2s y vuelve a pulsar.</p>
++            </div>`;
+         }
+     }
+ }
+diff --git a/static/js/utils.0e688f79.js b/static/js/utils.0e688f79.js
+new file mode 100644
+index 0000000..7dd151b
+--- /dev/null
++++ b/static/js/utils.0e688f79.js
+@@ -0,0 +1,742 @@
++/* ==========================================================================
++   UTILS — Funciones utilitarias core de Liga de Maestros.
++   Sin dependencias internas. Cargar primero que todos los demas modulos.
++   ========================================================================== */
++
++const normalizeCache = new Map();
++
++function qs(id) {
++    return document.getElementById(id);
++}
++
++// --- Cold start helper: fetch con reintento exponencial (compartido) ---
++// Usado por quantum_final.js y events.js para no vaciar la Arena en el primer
++// arranque cuando el backend aún calienta la cache (503/404 transitorios).
++async function fetchWithRetry(url, options = {}, retries = 3, baseDelay = 500) {
++    let lastError;
++    for (let attempt = 0; attempt < retries; attempt++) {
++        try {
++            const res = await fetch(url, options);
++            if (res.ok) return res;
++            const retryable = [429, 500, 502, 503, 504, 404].includes(res.status);
++            if (!retryable || attempt === retries - 1) {
++                const err = new Error(`HTTP ${res.status}`);
++                err.status = res.status;
++                err.response = res;
++                throw err;
++            }
++            const retryAfter = res.headers.get("Retry-After");
++            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} → ${res.status}, reintentando en ${delay}ms`);
++            await new Promise(r => setTimeout(r, delay));
++        } catch (e) {
++            lastError = e;
++            const isNetworkError = e instanceof TypeError || String(e.message || "").includes("Failed to fetch") || String(e.message || "").includes("NetworkError");
++            const isRetryableStatus = e.status && [429, 500, 502, 503, 504, 404].includes(e.status);
++            if (!isNetworkError && !isRetryableStatus) throw e;
++            if (attempt === retries - 1) throw e;
++            const delay = baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} error red → reintentando en ${delay}ms`, e.message);
++            await new Promise(r => setTimeout(r, delay));
++        }
++    }
++    throw lastError;
++}
++if (typeof window !== "undefined") window.fetchWithRetry = fetchWithRetry;
++
++function escapeHtml(value) {
++    return String(value ?? "")
++        .replaceAll("&", "&" + "amp;")
++        .replaceAll("<", "&" + "lt;")
++        .replaceAll(">", "&" + "gt;")
++        .replaceAll('"', "&" + "quot;")
++        .replaceAll("'", "&#039;");
++}
++
++function authenticatedJsonHeaders() {
++    const headers = { "Content-Type": "application/json" };
++    if (typeof state !== "undefined" && state.csrfToken) {
++        headers["X-CSRF-Token"] = state.csrfToken;
++    }
++    return headers;
++}
++
++function showToast(message, type = "success") {
++    const container = qs("toast-container");
++    if (!container) return;
++    const toast = document.createElement("div");
++    toast.className = `toast ${type}`;
++    toast.innerHTML = `<strong>${type === "success" ? "OK" : "AVISO"}</strong> ${escapeHtml(message)}`;
++    container.appendChild(toast);
++    setTimeout(() => {
++        toast.style.opacity = "0";
++        toast.style.transform = "translateY(8px)";
++        setTimeout(() => toast.remove(), 260);
++    }, 3200);
++}
++
++/* Nombres cortos de equipo.
++   Regla: el nombre debe leerse entero. Nunca se corta una palabra a medias
++   ("LAS PALMAS" no puede quedarse en "LAS"), nunca se deja solo el prefijo
++   juridico del club ("CE SABADELL" no puede quedarse en "CE") y dos equipos
++   distintos no pueden compartir etiqueta (Celta / Celta Fortuna). Por eso la
++   plantilla oficial de Primera y Segunda esta mapeada a mano y el fallback
++   solo se aplica a nombres desconocidos (ligas extranjeras, copas). */
++const SHORT_NAME_MAX = 14;
++
++// Ruido juridico/organizativo que no identifica al club.
++const SHORT_NAME_NOISE = [
++    "FC", "CF", "CD", "CE", "CP", "UD", "UE", "SD", "AD", "CA", "RC", "RCD", "SAD",
++    "BP", "B.P.", "AC", "CFS", "SAF", "FUTBOL", "BALOMPIE", "CLUB"
++];
++
++const SHORT_NAME_EXACT = {
++    "CLUB ATLETICO DE MADRID": "AT. MADRID",
++    "CLUB ATLÉTICO DE MADRID": "AT. MADRID",
++    "REAL MADRID C.F.": "R. MADRID",
++    "F.C. BARCELONA": "BARCA",
++    "ATHLETIC CLUB BILBAO": "ATHLETIC",
++    "REAL SOCIEDAD DE FUTBOL": "R. SOCIEDAD",
++    "REAL SOCIEDAD DE FÚTBOL": "R. SOCIEDAD",
++    "VILLARREAL C.F.": "VILLARREAL",
++    "REAL BETIS BALOMPIE": "BETIS",
++    "REAL BETIS BALOMPIÉ": "BETIS",
++    "DEPORTIVO ALAVES": "ALAVES",
++    "DEPORTIVO ALAVÉS": "ALAVES",
++    "R.C.D. ESPANYOL DE BARCELONA": "ESPANYOL",
++    "R.C.D. MALLORCA": "MALLORCA"
++};
++
++// Clave: nombre en mayusculas y sin acentos. Cubre la plantilla 2026-27 de
++// Primera y Segunda mas las variantes que envian los proveedores.
++const SHORT_NAME_NORMALIZED = {
++    // --- Primera ---
++    "ATLETICO MADRID": "AT. MADRID",
++    "ATLETICO DE MADRID": "AT. MADRID",
++    "CLUB ATLETICO DE MADRID": "AT. MADRID",
++    "AT. MADRID": "AT. MADRID",
++    "REAL MADRID": "R. MADRID",
++    "REAL MADRID C.F.": "R. MADRID",
++    "REAL MADRID CF": "R. MADRID",
++    "FC BARCELONA": "BARCA",
++    "BARCELONA": "BARCA",
++    "VILLARREAL": "VILLARREAL",
++    "VILLARREAL CF": "VILLARREAL",
++    "VILLARREAL C.F.": "VILLARREAL",
++    "REAL BETIS": "BETIS",
++    "REAL BETIS BALOMPIE": "BETIS",
++    "BETIS": "BETIS",
++    "CELTA": "CELTA",
++    "RC CELTA": "CELTA",
++    "RC CELTA DE VIGO": "CELTA",
++    "CELTA DE VIGO": "CELTA",
++    "CELTA VIGO": "CELTA",
++    "GETAFE": "GETAFE",
++    "GETAFE CF": "GETAFE",
++    "RAYO VALLECANO": "RAYO",
++    "VALENCIA": "VALENCIA",
++    "VALENCIA CF": "VALENCIA",
++    "REAL SOCIEDAD": "R. SOCIEDAD",
++    "R. SOCIEDAD": "R. SOCIEDAD",
++    "REAL SOCIEDAD DE FUTBOL": "R. SOCIEDAD",
++    "REAL SOCIEDAD DE FUTBOL SAD": "R. SOCIEDAD",
++    "ESPANYOL": "ESPANYOL",
++    "RCD ESPANYOL": "ESPANYOL",
++    "RCD ESPANYOL DE BARCELONA": "ESPANYOL",
++    "REAL CLUB DEPORTIVO ESPANYOL": "ESPANYOL",
++    "ATHLETIC": "ATHLETIC",
++    "ATHLETIC CLUB": "ATHLETIC",
++    "ATHLETIC CLUB BILBAO": "ATHLETIC",
++    "ATHLETIC BILBAO": "ATHLETIC",
++    "SEVILLA": "SEVILLA",
++    "SEVILLA FC": "SEVILLA",
++    "DEPORTIVO ALAVES": "ALAVES",
++    "ALAVES": "ALAVES",
++    "ELCHE": "ELCHE",
++    "ELCHE CF": "ELCHE",
++    "LEVANTE": "LEVANTE",
++    "LEVANTE UD": "LEVANTE",
++    "OSASUNA": "OSASUNA",
++    "CA OSASUNA": "OSASUNA",
++    "CLUB ATLETICO OSASUNA": "OSASUNA",
++    "R. RACING CLUB": "RACING",
++    "R RACING CLUB": "RACING",
++    "RACING CLUB": "RACING",
++    "RACING SANTANDER": "RACING",
++    "RACING DE SANTANDER": "RACING",
++    "REAL RACING CLUB DE SANTANDER": "RACING",
++    "R. SANTANDER": "RACING",
++    "R SANTANDER": "RACING",
++    "RC DEPORTIVO": "DEPOR",
++    "REAL CLUB DEPORTIVO": "DEPOR",
++    "DEPORTIVO LA CORUNA": "DEPOR",
++    "RC DEPORTIVO DE LA CORUNA": "DEPOR",
++    "MALAGA": "MALAGA",
++    "MALAGA CF": "MALAGA",
++    // --- Segunda ---
++    "RCD MALLORCA": "MALLORCA",
++    "MALLORCA": "MALLORCA",
++    "GIRONA": "GIRONA",
++    "GIRONA FC": "GIRONA",
++    "REAL OVIEDO": "R. OVIEDO",
++    "OVIEDO": "R. OVIEDO",
++    "UD ALMERIA": "ALMERIA",
++    "ALMERIA": "ALMERIA",
++    "UD LAS PALMAS": "LAS PALMAS",
++    "LAS PALMAS": "LAS PALMAS",
++    "CD CASTELLON": "CASTELLON",
++    "CASTELLON": "CASTELLON",
++    "BURGOS CF": "BURGOS",
++    "BURGOS": "BURGOS",
++    "SD EIBAR": "EIBAR",
++    "EIBAR": "EIBAR",
++    "CORDOBA CF": "CORDOBA",
++    "CORDOBA": "CORDOBA",
++    "ALBACETE BP": "ALBACETE",
++    "ALBACETE BALOMPIE": "ALBACETE",
++    "ALBACETE": "ALBACETE",
++    "AD CEUTA FC": "CEUTA",
++    "AD CEUTA": "CEUTA",
++    "CEUTA": "CEUTA",
++    "FC ANDORRA": "ANDORRA",
++    "ANDORRA": "ANDORRA",
++    "REAL SPORTING": "SPORTING",
++    "REAL SPORTING DE GIJON": "SPORTING",
++    "SPORTING DE GIJON": "SPORTING",
++    "SPORTING GIJON": "SPORTING",
++    "SPORTING": "SPORTING",
++    "GRANADA CF": "GRANADA",
++    "GRANADA": "GRANADA",
++    "R. SOCIEDAD B": "R. SOCIEDAD B",
++    "REAL SOCIEDAD B": "R. SOCIEDAD B",
++    "SANSE": "R. SOCIEDAD B",
++    "REAL VALLADOLID CF": "VALLADOLID",
++    "REAL VALLADOLID": "VALLADOLID",
++    "VALLADOLID": "VALLADOLID",
++    "CADIZ CF": "CADIZ",
++    "CADIZ": "CADIZ",
++    "CD LEGANES": "LEGANES",
++    "LEGANES": "LEGANES",
++    "CD TENERIFE": "TENERIFE",
++    "TENERIFE": "TENERIFE",
++    "CD ELDENSE": "ELDENSE",
++    "ELDENSE": "ELDENSE",
++    "CE SABADELL": "SABADELL",
++    "CE SABADELL FC": "SABADELL",
++    "SABADELL": "SABADELL",
++    "CELTA FORTUNA": "CELTA FORTUNA",
++    "CELTA B": "CELTA FORTUNA",
++    // --- Otros clubes espanoles habituales ---
++    "REAL ZARAGOZA": "ZARAGOZA",
++    "ZARAGOZA": "ZARAGOZA",
++    "SD HUESCA": "HUESCA",
++    "HUESCA": "HUESCA",
++    "RACING DE FERROL": "R. FERROL",
++    "RACING FERROL": "R. FERROL",
++    "CD MIRANDES": "MIRANDES",
++    "MIRANDES": "MIRANDES",
++    "CULTURAL Y DEPORTIVA LEONESA": "C. LEONESA",
++    "CULTURAL LEONESA": "C. LEONESA",
++    "C LEONESA": "C. LEONESA",
++    "C. LEONESA": "C. LEONESA"
++};
++
++function shortNameLookup(table, key) {
++    const value = table[key];
++    return typeof value === "string" ? value : "";
++}
++
++function shortNameFallback(normalized) {
++    // Un nombre desconocido (liga extranjera, copa) se limpia sin mutilarlo:
++    // se quitan las siglas del club y, si aun sobra, se abrevian las primeras
++    // palabras. La ultima palabra (la que identifica al equipo) nunca se corta;
++    // si es larga se muestra entera y es el CSS quien decide como encajarla.
++    const words = normalized.replace(/[.,]/g, " ").split(/\s+/).filter(Boolean);
++    const noise = new Set(SHORT_NAME_NOISE);
++    const meaningful = words.filter(word => !noise.has(word) && !/^\d+$/.test(word));
++    const parts = (meaningful.length ? meaningful : words).slice();
++    let label = parts.join(" ");
++    for (let i = 0; i < parts.length - 1 && label.length > SHORT_NAME_MAX; i++) {
++        parts[i] = `${parts[i].charAt(0)}.`;
++        label = parts.join(" ");
++    }
++    return label.length > SHORT_NAME_MAX ? parts[parts.length - 1] : label;
++}
++
++function getShortName(name) {
++    if (!name) return "-";
++    const clean = String(name).trim().toUpperCase();
++    if (!clean) return "-";
++    const normalized = clean.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
++    return shortNameLookup(SHORT_NAME_EXACT, clean)
++        || shortNameLookup(SHORT_NAME_NORMALIZED, normalized)
++        || shortNameFallback(normalized);
++}
++
++function normalizeName(text) {
++    if (!text) return "";
++    const cacheKey = String(text);
++    if (normalizeCache.has(cacheKey)) return normalizeCache.get(cacheKey);
++    const rawCollapsed = String(text)
++        .toUpperCase()
++        .normalize("NFD")
++        .replace(/[\u0300-\u036f]/g, "")
++        .replace(/[^A-Z0-9]/g, "");
++    const normalized = String(text)
++        .toUpperCase()
++        .normalize("NFD")
++        .replace(/[\u0300-\u036f]/g, "")
++        .replace(/\b(REAL|CLUB|FC|CF|RC|RCD|CD|UD|SD|SAD|BALOMPIE|DEPORTIVO)\b/g, "")
++        .replace(/[^A-Z0-9]/g, "");
++    const aliases = {
++        DEPOR: "LACORUNA",
++        DEPORTIVO: "LACORUNA",
++        DEPORTIVOLACORUNA: "LACORUNA",
++        LACORUNA: "LACORUNA",
++        ATMADRID: "ATLETICOMADRID",
++        ATLETICOMADRID: "ATLETICOMADRID",
++        CELTA: "CELTADEVIGO",
++        CELTAVIGO: "CELTADEVIGO",
++        CELTADEVIGO: "CELTADEVIGO",
++        ESPANYOL: "ESPANYOL",
++        RCDESPANYOL: "ESPANYOL",
++        RCDESPANYOLDEBARCELONA: "ESPANYOL",
++        OVIEDO: "OVIEDO",
++        REALOVIEDO: "OVIEDO",
++        RSOCIEDAD: "SOCIEDAD",
++        REALSOCIEDAD: "SOCIEDAD",
++        RAYO: "RAYOVALLECANO",
++        RAYOVALLECANO: "RAYOVALLECANO",
++        ALAVES: "ALAVES",
++        DEPORTIVOALAVES: "ALAVES",
++        RZARAGOZA: "ZARAGOZA",
++        REALZARAGOZA: "ZARAGOZA",
++        RACINGDESANTANDER: "RACINGSANTANDER",
++        RACINGSANTANDER: "RACINGSANTANDER",
++        UDLASPALMAS: "LASPALMAS"
++    };
++    const result = aliases[normalized] || aliases[rawCollapsed] || normalized;
++    normalizeCache.set(cacheKey, result);
++    return result;
++}
++
++function formatSmartDate(fechaRaw, horaRaw) {
++    if (!fechaRaw && !horaRaw) return "Horario pendiente";
++    const h = (horaRaw || "").toString().replace(/h$/i, "").trim();
++    if (!fechaRaw) return h ? `${h}h` : "Horario pendiente";
++    try {
++        const d = new Date(String(fechaRaw).slice(0, 10) + "T12:00:00");
++        if (isNaN(d.getTime())) return h ? `${h}h` : String(fechaRaw);
++        const dias = ["dom", "lun", "mar", "mie", "jue", "vie", "sab"];
++        const label = `${dias[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
++        return h ? `${label} ${h}h` : label;
++    } catch {
++        return h ? `${h}h` : String(fechaRaw || "");
++    }
++}
++
++function fixtureScheduleDisplay(match) {
++    const fecha = String(match?.fecha_raw || match?.fecha || match?.added || "").slice(0, 10);
++    const hora = String(match?.hora || match?.scheduled || "").replace(/h$/i, "").trim();
++    const serverToday = typeof state !== "undefined" ? String(state.data?.today_madrid || "") : "";
++    if (fecha && serverToday && fecha === serverToday) return hora ? `${hora}h` : "Horario por confirmar";
++    return formatSmartDate(fecha, hora);
++}
++
++/* El horario ("lun 17/08 19:00h") no cabe en una sola linea dentro de la celda
++   de la quiniela: se parte en dia y hora para pintarlo en dos lineas y que la
++   hora nunca quede recortada. */
++function fixtureScheduleParts(match) {
++    const label = String(fixtureScheduleDisplay(match) || "").trim();
++    const parsed = /^(.*?)\s*(\d{1,2}:\d{2}h?)$/.exec(label);
++    if (!parsed) return { day: label, time: "", label };
++    return { day: parsed[1].trim(), time: parsed[2], label };
++}
++
++function hasUnconfirmedFixtureResult(match) {
++    const display = String(match?.marcador || match?.score || "").toLowerCase();
++    return display.includes("pendiente de resultado") && !scoreOnly(display);
++}
++
++function needsFixtureSchedule(match) {
++    if (!match) return false;
++    if (isScheduledStatus(match.status) || hasUnconfirmedFixtureResult(match)) return true;
++    const hasScore = Boolean(scoreOnly(match.marcador || match.score || match.scores?.score))
++        || (match.goles_local != null && match.goles_visitante != null);
++    return isFinishedStatus(match.status) && !hasScore;
++}
++
++function isLiveStatus(status) {
++    const raw = String(status || "").toUpperCase();
++    return ["LIVE", "IN PLAY", "HT", "HALF TIME BREAK", "EN JUEGO", "1H", "2H"].includes(raw);
++}
++
++function isFinishedStatus(status) {
++    const raw = String(status || "").toUpperCase();
++    return ["FT", "FINISHED", "TERMINADO", "AET", "PEN", "STALE", "AWARDED"].includes(raw);
++}
++
++function isExpiredLiveMatch(match, maxAgeMs = 2 * 60 * 60 * 1000) {
++    if (!match || !isLiveStatus(match.status)) return false;
++    const kickoff = parseMatchTimestamp(match);
++    if (!kickoff) return false;
++    const elapsedMs = Date.now() - kickoff;
++    if (elapsedMs < -5 * 60 * 1000) return true;
++    const minute = matchMinuteValue(match);
++    if (minute > 0 && minute > elapsedMs / 60000 + 15) return true;
++    return elapsedMs > maxAgeMs;
++}
++
++function isScheduledStatus(status) {
++    const raw = String(status || "").toUpperCase();
++    return ["SCHEDULED", "NS", "NOT STARTED", ""].includes(raw);
++}
++
++function matchMinuteValue(match) {
++    const direct = String(match.time || match.minute || match.minuto_live || "").match(/\d{1,3}/);
++    if (direct) return Number(direct[0]);
++    const score = String(match.marcador || match.score || match.scores?.score || "");
++    const embedded = score.match(/\((\d{1,3})\s*['’]?\)/) || score.match(/\b(\d{1,3})\s*['’]/);
++    return embedded ? Number(embedded[1]) : 0;
++}
++
++function isImplicitlyFinished(match) {
++    if (!match) return false;
++    if (String(match.marcador || "").toLowerCase().includes("pendiente de resultado")) return true;
++    if (!isScheduledStatus(match.status)) return false;
++    const ts = parseMatchTimestamp(match);
++    if (!ts) return false;
++    return Date.now() - ts > 2.5 * 60 * 60 * 1000;
++}
++
++function scoreOnly(value) {
++    const raw = String(value || "").trim().toUpperCase();
++    if (!raw || raw === "-") return null;
++    const m = raw.match(/^([0-9M]+\s*[-–]\s*[0-9M]+)/);
++    return m ? m[1].replace(/\s/g, "") : null;
++}
++
++function plenoScoreKey(value) {
++    const only = scoreOnly(value);
++    if (!only) return "";
++    const parts = only.replace(/–/g, "-").split("-");
++    if (parts.length !== 2) return "";
++    const buckets = parts.map(goal => {
++        if (goal === "M") return "M";
++        const numeric = Number.parseInt(goal, 10);
++        if (Number.isNaN(numeric) || numeric < 0) return "";
++        return numeric >= 3 ? "M" : String(numeric);
++    });
++    return buckets.every(Boolean) ? buckets.join("-") : "";
++}
++
++function liveStage(match) {
++    const st = String(match?.status || "").toUpperCase();
++    if (st === "HT" || st === "HALF TIME BREAK") return "HT";
++    return "LIVE";
++}
++
++/* Minuto de un partido en juego, listo para pintar: "63'", "DESCANSO" o ""
++   cuando no hay nada fiable (el proveedor todavia no mando minuto). */
++function liveMinuteLabel(match) {
++    if (!match) return "";
++    if (liveStage(match) === "HT") return "DESCANSO";
++    const candidates = [match.minuto_live, match.minuto, match.minute, match.time];
++    for (const raw of candidates) {
++        const clean = String(raw ?? "").trim();
++        if (!clean || clean === "-" || clean === "—") continue;
++        if (/^(HT|DESC|DESCANSO|HALF)/i.test(clean)) return "DESCANSO";
++        const digits = clean.match(/\d{1,3}/);
++        if (digits) return `${digits[0]}'`;
++    }
++    // Ultimo recurso: el marcador de la quiniela lleva el minuto pegado ("2-1 (63')").
++    const embedded = matchMinuteValue(match);
++    return embedded ? `${embedded}'` : "";
++}
++
++/* Marcador + minuto en una sola pieza para las celdas en directo: "2-1 · 63'". */
++function liveScoreWithMinute(match, fallbackScore = "") {
++    const score = liveScoreDisplay(match, fallbackScore);
++    const minute = liveMinuteLabel(match);
++    if (!minute) return score;
++    return `${score} · ${minute === "DESCANSO" ? "Desc." : minute}`;
++}
++
++function liveScoreAttrs(match, live) {
++    if (!live) return "";
++    return ` data-live-match="${match.id || ""}" data-live-minute="${matchMinuteValue(match)}" data-live-stage="${liveStage(match)}"`;
++}
++
++function liveScoreDisplay(match, fallbackScore = "") {
++    if (match?.marcador_base) return match.marcador_base;
++    if (match?.goles_local != null && match?.goles_visitante != null) {
++        return `${match.goles_local}-${match.goles_visitante}`;
++    }
++    const only = scoreOnly(match?.marcador || match?.score);
++    return only || fallbackScore || "-";
++}
++
++function isMatchLiveNow(match) {
++    if (!match) return false;
++    if (isFinishedStatus(match.status) || isImplicitlyFinished(match)) return false;
++    if (isExpiredLiveMatch(match)) return false;
++    return isLiveStatus(match.status) || Boolean(match.minuto_live);
++}
++
++function competitionLabel(match) {
++    const candidates = [
++        match?.competition_name,
++        match?._competition_name,
++        match?.competition,
++        match?.liga,
++        match?.league
++    ];
++    for (const candidate of candidates) {
++        if (typeof candidate === "string" && candidate.trim()) return candidate.trim().toUpperCase();
++        if (candidate && typeof candidate === "object") {
++            const name = candidate.name || candidate.nombre || candidate.label;
++            if (typeof name === "string" && name.trim()) return name.trim().toUpperCase();
++        }
++    }
++    return "OTROS";
++}
++
++function matchCompetitionMeta(match) {
++    return competitionLabel(match);
++}
++
++function getSign(preds, idx, primary, fallback) {
++    const first = preds?.[primary]?.signos?.[idx];
++    if (first && first !== "-") return normalizeSign(first);
++    const alt = fallback ? preds?.[fallback]?.signos?.[idx] : null;
++    return normalizeSign(alt);
++}
++
++function normalizeSign(value) {
++    const raw = String(value || "-")
++        .trim()
++        .toUpperCase()
++        .replace(/[–—]/g, "-")
++        .replaceAll(" ", "");
++    if (!raw || raw === "-") return "-";
++
++    const pleno = plenoScoreKey(raw);
++    if (pleno) return pleno;
++
++    if (!/^[1X2]+$/.test(raw)) return "-";
++    const ordered = ["1", "X", "2"].filter(sign => raw.includes(sign)).join("");
++    return ordered || "-";
++}
++
++function standardSignMatches(sign, real) {
++    const prediction = String(sign || "-").trim().toUpperCase();
++    const result = String(real || "-").trim().toUpperCase();
++    if (prediction === "-" || result === "-") return false;
++    return prediction.includes(result);
++}
++
++function hitClass(sign, real, status, exactScore = false) {
++    if (!sign || sign === "-") return "";
++    if (isScheduledStatus(status) && !isImplicitlyFinished({ status, marcador: real })) return "";
++    if (exactScore) {
++        const userKey = plenoScoreKey(sign);
++        const realKey = plenoScoreKey(real);
++        if (!userKey || !realKey) return "";
++        return userKey === realKey ? "hit hit-exact" : "miss";
++    }
++    if (!["1", "X", "2"].includes(normalizeSign(real))) return "";
++    return standardSignMatches(sign, real) ? "hit" : "miss";
++}
++
++function isHitSign(sign, real, exactScore = false) {
++    if (!sign || sign === "-") return false;
++    if (exactScore) return plenoScoreKey(sign) === plenoScoreKey(real);
++    return standardSignMatches(sign, real);
++}
++
++function formatKickoffShort(fechaRaw, horaRaw) {
++    return formatSmartDate(fechaRaw, horaRaw);
++}
++
++/* ==========================================================================
++   RELOJ DE MADRID — la unica zona que vale en esta web
++   --------------------------------------------------------------------------
++   El servidor entrega TODAS las horas (``today_madrid``, ``added``,
++   ``fecha_raw``/``hora``, ``scheduled``, ``edit_deadline``) como texto sin
++   zona ("2026-09-03 21:00:00") ya convertido a hora de Madrid.
++
++   Interpretar ese texto con ``new Date()`` lo leia en la zona del navegador:
++   en Canarias, en un movil en UTC o de viaje, el saque de las 21:00 caia dos
++   horas mas tarde y el partido se veia como futuro. Con eso el filtro de
++   caducidad daba el directo por muerto justo cuando estaba empezando y la
++   pagina de Directo se quedaba en "no hay partidos en juego" con el Celta
++   jugando. Desde aqui, todo instante se interpreta y se pinta en
++   Europe/Madrid, nunca en la zona local del navegador.
++   ========================================================================== */
++const MADRID_TIMEZONE = "Europe/Madrid";
++
++/* Desplazamiento de Madrid respecto a UTC (ms) en un instante dado. */
++function madridOffsetMs(atMs) {
++    try {
++        const parts = new Intl.DateTimeFormat("en-GB", {
++            timeZone: MADRID_TIMEZONE,
++            hour12: false,
++            year: "numeric",
++            month: "2-digit",
++            day: "2-digit",
++            hour: "2-digit",
++            minute: "2-digit",
++            second: "2-digit",
++        }).formatToParts(new Date(atMs));
++        const value = type => Number((parts.find(part => part.type === type) || {}).value || 0);
++        const asUtc = Date.UTC(
++            value("year"),
++            value("month") - 1,
++            value("day"),
++            value("hour") % 24,
++            value("minute"),
++            value("second"),
++        );
++        return asUtc - (atMs - (atMs % 1000));
++    } catch (error) {
++        return 0;
++    }
++}
++
++/* "Reloj de pared" de Madrid ("2026-09-03", "21:00") -> instante real (ms).
++   Funciona igual en Madrid, en Canarias o en un navegador en UTC. */
++function madridWallClockToMs(dateText, timeText) {
++    const date = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(dateText || "").trim());
++    if (!date) return null;
++    const time = /^(\d{1,2}):(\d{2})/.exec(String(timeText || "").trim());
++    const naiveUtc = Date.UTC(
++        Number(date[1]),
++        Number(date[2]) - 1,
++        Number(date[3]),
++        time ? Number(time[1]) : 12,
++        time ? Number(time[2]) : 0,
++        0,
++    );
++    if (Number.isNaN(naiveUtc)) return null;
++    // El offset depende del instante (CET/CEST, el cambio de hora cae siempre
++    // de madrugada): una segunda pasada deja el calculo exacto.
++    const offset = madridOffsetMs(naiveUtc - madridOffsetMs(naiveUtc));
++    return naiveUtc - offset;
++}
++
++/* Pinta un instante en hora de Madrid, sea cual sea la zona del navegador. */
++function madridFormatMs(atMs, options) {
++    try {
++        return new Intl.DateTimeFormat("es-ES", { timeZone: MADRID_TIMEZONE, ...options }).format(new Date(atMs));
++    } catch (error) {
++        return new Date(atMs).toLocaleString("es-ES");
++    }
++}
++
++function parseMatchTimestamp(match) {
++    if (!match) return null;
++    const isoDate = String(match.fecha_raw || match.fecha || match.added || "").slice(0, 10);
++    if (isoDate.length < 8) return null;
++    /* `time` es el minuto en las tarjetas en directo ("63", "45+"), no la hora
++       de saque, y una quiniela sin horario manda hora "-": solo se usa el
++       primer campo que tenga forma de hora (HH:MM). Sin hora conocida se
++       devuelve null en vez de inventar las 12:00, que daba por caducado un
++       partido que seguia en juego. */
++    for (const candidate of [match.hora, match.scheduled, match.time]) {
++        const raw = String(candidate ?? "").replace(/h$/i, "").trim();
++        if (!/^\d{1,2}:\d{2}/.test(raw)) continue;
++        const stamp = madridWallClockToMs(isoDate, raw.slice(0, 5));
++        if (stamp !== null) return stamp;
++    }
++    return null;
++}
++
++function isUpcomingScheduledMatch(match, graceMinutes = 15) {
++    if (!isScheduledStatus(match?.status)) return false;
++    const ts = parseMatchTimestamp(match);
++    if (!ts) return false;
++    return ts > Date.now() - graceMinutes * 60 * 1000;
++}
++
++function findMostOpenMatch() {
++    const matches = (typeof getAllLeagueMatches === "function" ? getAllLeagueMatches() : []) || [];
++    const open = matches.filter(m => isMatchLiveNow(m) || isUpcomingScheduledMatch(m));
++    if (!open.length) return null;
++    return open.sort((a, b) => (parseMatchTimestamp(a) || 0) - (parseMatchTimestamp(b) || 0))[0];
++}
++
++function sameSigns(a, b) {
++    const left = Array.isArray(a) ? a : [];
++    const right = Array.isArray(b) ? b : [];
++    if (left.length !== right.length) return false;
++    return left.every((sign, idx) => normalizeSign(sign) === normalizeSign(right[idx]));
++}
++
++function findQ15Directo(match) {
++    if (!state?.q15Directo || !match) return {};
++    const key = matchPairKey(match);
++    return state.q15Directo[key] || state.q15Directo[String(match.id)] || {};
++}
++
++function eventTypeLabel(type) {
++    const t = String(type || "").toLowerCase();
++    if (t.includes("goal")) return "Gol";
++    if (t.includes("yellow")) return "Amarilla";
++    if (t.includes("red")) return "Roja";
++    if (t.includes("subst")) return "Cambio";
++    return type || "";
++}
++
++function renderQ15Events(match) {
++    const detail = findQ15Directo(match);
++    const groups = detail.events || [];
++    const withEvents = groups.filter(group => (group.events || []).length);
++    if (!withEvents.length) {
++        return `<small class="q15-empty">Sin eventos cacheados para este partido.</small>`;
++    }
++    return `<div class="q15-events">${withEvents.map(group => `<div class="q15-event-team"><b>${escapeHtml(getShortName(group.team))}</b>${(group.events || []).map(event => `<span class="q15-event"><em>${escapeHtml(eventTypeLabel(event.type))}</em><strong>${escapeHtml(event.minute || "")}</strong><span>${escapeHtml(event.player || "")}</span></span>`).join("")}</div>`).join("")}</div>`;
++}
++
++function renderQ15Meta(match) {
++    const detail = findQ15Directo(match);
++    if (!detail) return "";
++    const bits = [];
++    if (detail.referee) bits.push(`Arbitro: ${detail.referee}`);
++    if (detail.coaches) bits.push(`Tecnicos: ${detail.coaches}`);
++    if (!bits.length) return "";
++    return `<small class="q15-meta">${escapeHtml(bits.join(" | "))}</small>`;
++}
++
++function repairMojibakeText(value) {
++    let text = String(value || "");
++    for (let i = 0; i < 3 && /[\u00c2\u00c3]/.test(text); i += 1) {
++        try {
++            const decoded = decodeURIComponent(escape(text));
++            if (!decoded || decoded === text) break;
++            text = decoded;
++        } catch (_) {
++            break;
++        }
++    }
++    return text;
++}
++
++function compactTensionLabel(label) {
++    const fullLabel = repairMojibakeText(label);
++    const clean = fullLabel.trim().toLowerCase();
++    const map = {
++        programa: "PROG", gemini: "GEM", grok: "GROK", claude: "CLAU",
++        copilot: "COP", chatgpt: "GPT", consejo: "CONS",
++        pena: "PENA", "peña": "PENA", tu: "TU", "tú": "TU", boleto: "TU"
++    };
++    if (clean === "peña" || clean.includes("peña")) return "PENA";
++    if (clean === "tú" || clean.includes("tú")) return "TU";
++    return map[clean] || fullLabel.trim().slice(0, 4).toUpperCase();
++}
++
++function matchPairKey(match) {
++    const home = normalizeName(match.local || match.home_name || match.home?.name || "");
++    const away = normalizeName(match.visitante || match.away_name || match.away?.name || "");
++    if (!home && !away) return "";
++    return `${home}-${away}`;
++}
+diff --git a/static/js/utils.js b/static/js/utils.js
+index b94869b..7dd151b 100644
+--- a/static/js/utils.js
++++ b/static/js/utils.js
+@@ -9,6 +9,41 @@ function qs(id) {
+     return document.getElementById(id);
+ }
+ 
++// --- Cold start helper: fetch con reintento exponencial (compartido) ---
++// Usado por quantum_final.js y events.js para no vaciar la Arena en el primer
++// arranque cuando el backend aún calienta la cache (503/404 transitorios).
++async function fetchWithRetry(url, options = {}, retries = 3, baseDelay = 500) {
++    let lastError;
++    for (let attempt = 0; attempt < retries; attempt++) {
++        try {
++            const res = await fetch(url, options);
++            if (res.ok) return res;
++            const retryable = [429, 500, 502, 503, 504, 404].includes(res.status);
++            if (!retryable || attempt === retries - 1) {
++                const err = new Error(`HTTP ${res.status}`);
++                err.status = res.status;
++                err.response = res;
++                throw err;
++            }
++            const retryAfter = res.headers.get("Retry-After");
++            const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} → ${res.status}, reintentando en ${delay}ms`);
++            await new Promise(r => setTimeout(r, delay));
++        } catch (e) {
++            lastError = e;
++            const isNetworkError = e instanceof TypeError || String(e.message || "").includes("Failed to fetch") || String(e.message || "").includes("NetworkError");
++            const isRetryableStatus = e.status && [429, 500, 502, 503, 504, 404].includes(e.status);
++            if (!isNetworkError && !isRetryableStatus) throw e;
++            if (attempt === retries - 1) throw e;
++            const delay = baseDelay * Math.pow(2, attempt);
++            if (attempt === 0) console.info(`[cold-start] ${url} error red → reintentando en ${delay}ms`, e.message);
++            await new Promise(r => setTimeout(r, delay));
++        }
++    }
++    throw lastError;
++}
++if (typeof window !== "undefined") window.fetchWithRetry = fetchWithRetry;
++
+ function escapeHtml(value) {
+     return String(value ?? "")
+         .replaceAll("&", "&" + "amp;")
+diff --git a/static/manifest.json b/static/manifest.json
+index bb5e6f7..75a2f38 100644
+--- a/static/manifest.json
++++ b/static/manifest.json
+@@ -22,7 +22,7 @@
+   "js/command_palette.js": "js/command_palette.e98ef501.js",
+   "js/confetti.js": "js/confetti.93f7c301.js",
+   "js/contest.js": "js/contest.74e0ceca.js",
+-  "js/events.js": "js/events.8d001b03.js",
++  "js/events.js": "js/events.4a92146d.js",
+   "js/live.js": "js/live.652c14cf.js",
+   "js/logos.js": "js/logos.b0d2c757.js",
+   "js/navigation.js": "js/navigation.f5b0722a.js",
+@@ -31,13 +31,13 @@
+   "js/pages/games_hub.js": "js/pages/games_hub.5e857f58.js",
+   "js/pages/ticket_page.js": "js/pages/ticket_page.21d67ee8.js",
+   "js/post_jornada.js": "js/post_jornada.eba64ec0.js",
+-  "js/quantum_final.js": "js/quantum_final.096a2596.js",
++  "js/quantum_final.js": "js/quantum_final.83f03039.js",
+   "js/quiz.js": "js/quiz.454e7797.js",
+   "js/sound_manager.js": "js/sound_manager.7959ce05.js",
+   "js/standings.js": "js/standings.7e7c319a.js",
+   "js/state.js": "js/state.6ce27518.js",
+   "js/sw_register.js": "js/sw_register.4291235c.js",
+   "js/ticket_image.js": "js/ticket_image.4a29e93d.js",
+-  "js/utils.js": "js/utils.6a83f8ff.js",
++  "js/utils.js": "js/utils.0e688f79.js",
+   "js/ux_signals.js": "js/ux_signals.6f1bb351.js"
+ }
+\ No newline at end of file
+diff --git a/tests/test_cold_start_retry.py b/tests/test_cold_start_retry.py
+new file mode 100644
+index 0000000..c3b121e
+--- /dev/null
++++ b/tests/test_cold_start_retry.py
+@@ -0,0 +1,78 @@
++"""Cold start — retry y 503 (Tarea #1, MESA VIVA 2026-09-12).
++
++Verifica que el fix de cold start no se pierda:
++- utils.js expone fetchWithRetry global
++- quantum_final.js lo usa y mantiene skeleton + botón Reintentar
++- /api/liga/data devuelve 503 con Retry-After cuando no hay jornada (cache miss)
++"""
++from pathlib import Path
++import re
++
++ROOT = Path(__file__).resolve().parents[1]
++UTILS = ROOT / "static" / "js" / "utils.js"
++QUANTUM = ROOT / "static" / "js" / "quantum_final.js"
++QUANTUM_HASHED = ROOT / "static" / "js" / "quantum_final.83f03039.js"
++LIGA_DATA = ROOT / "liga_maestros" / "routes" / "liga_data.py"
++EVENTS = ROOT / "static" / "js" / "events.js"
++
++
++def test_utils_exposes_fetch_with_retry():
++    text = UTILS.read_text(encoding="utf-8")
++    assert "async function fetchWithRetry" in text, "utils.js debe definir fetchWithRetry"
++    assert "window.fetchWithRetry" in text
++    # debe ser reintentable en 503/504/404
++    assert "503" in text and "404" in text
++    assert "Retry-After" in text
++    assert "500 * Math.pow(2" in text or "baseDelay" in text
++
++
++def test_quantum_uses_retry_and_keeps_skeleton():
++    text = QUANTUM.read_text(encoding="utf-8")
++    assert "fetchWithRetry" in text, "quantum_final.js debe usar fetchWithRetry"
++    # mantiene skeleton visible durante reintentos
++    assert "renderSkeletonLoading" in text
++    assert "skeleton" in text.lower()
++    # botón Reintentar tras fallo final
++    assert "Reintentar ahora" in text
++    assert 'onclick="refreshData()"' in text
++    # respeta Retry-After del backend
++    assert "Retry-After" in text
++    # no vacía la Arena al primer fallo
++    assert "No se pudo cargar la Arena" in text
++    # cold_start dentro de 200 también reintenta
++    assert "cold_start" in text
++
++
++def test_events_uses_retry_for_live_snapshot():
++    text = EVENTS.read_text(encoding="utf-8")
++    assert "fetchWithRetry" in text or "fetcher" in text
++    # debe haber cambiado el fetch directo por fetcher con retry
++    assert "refreshLiveSnapshot" in text
++
++
++def test_liga_data_returns_503_on_cold_start():
++    text = LIGA_DATA.read_text(encoding="utf-8")
++    # El branch de max_jornada None ahora debe ser 503, no 404
++    assert 'status_code = 503' in text
++    assert 'Retry-After' in text
++    assert '"cold_start": True' in text or "'cold_start': True" in text
++    assert "No hay jornadas cargadas" not in text or "503" in text
++    # Debe tener comentario de cold start
++    assert "Cold start" in text
++
++
++def test_quantum_hashed_is_fresh():
++    # El build debe haber generado el hash nuevo a partir del JS actual
++    assert QUANTUM_HASHED.exists(), "build.py debe generar quantum_final.<hash>.js"
++    hashed_text = QUANTUM_HASHED.read_text(encoding="utf-8")
++    source_text = QUANTUM.read_text(encoding="utf-8")
++    # El hash debe contener la lógica de reintento
++    assert "fetchWithRetry" in hashed_text
++    assert hashed_text == source_text, "el hashed debe ser copia exacta del fuente (build.py lo copia)"
++
++
++def test_frontend_retry_handles_network_errors():
++    # utils debe reintentar también errores de red (Failed to fetch)
++    text = UTILS.read_text(encoding="utf-8")
++    assert "Failed to fetch" in text
++    assert "TypeError" in text
+-- 
+2.39.5
+
