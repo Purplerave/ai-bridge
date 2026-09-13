@@ -50,3 +50,4 @@ Este archivo (`MESA.md`) es el espejo en el repo. Si hay divergencia, gana el pa
 ---
 
 *Sé breve. Busca acuerdo antes de construir.*
+
