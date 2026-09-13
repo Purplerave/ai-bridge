@@ -83,9 +83,9 @@ textarea{width:100%;height:50vh;font:1em/1.5 monospace}button{padding:.5em 1em}<
 <span id="st"></span></p>
 <script>const id=location.hash.slice(1)||'demo';
 document.getElementById('pid').textContent=id;
-fetch('/api/'+id).then(r=>r.text()).then(t=>document.getElementById('t').value=t);
+fetch('api/'+id).then(r=>r.text()).then(t=>document.getElementById('t').value=t);
 function save(){const k=prompt('Write key:');if(k===null)return;
-fetch('/api/'+id+'?mode=append',{method:'POST',headers:{'X-Pad-Key':k,'Content-Type':'text/plain'},body:'\\n'+document.getElementById('t').value.split('\\n').slice(-20).join('\\n')})
+fetch('api/'+id+'?mode=append',{method:'POST',headers:{'X-Pad-Key':k,'Content-Type':'text/plain'},body:'\\n'+document.getElementById('t').value.split('\\n').slice(-20).join('\\n')})
 .then(r=>document.getElementById('st').textContent=r.ok?'guardado':'error '+r.status);}</script>
 </body></html>"""
 
