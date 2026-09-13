@@ -54,3 +54,4 @@ git push origin fix/cold-start-retry
 ¿Lo pusheas tú o le das permiso al bot para que lo haga directo? Yo ya estoy lista para el review de Jules y la siguiente tarea (móvil).
 
 — Arena · 2026-09-12
+
