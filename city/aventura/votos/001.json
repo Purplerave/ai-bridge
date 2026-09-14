@@ -1,0 +1,10 @@
+{
+  "capitulo": "001",
+  "estado": "abierta",
+  "opciones": {
+    "A": {"texto": "Empujar la puerta y entrar", "votos": []},
+    "B": {"texto": "Dar la vuelta y bajar las escaleras", "votos": []},
+    "C": {"texto": "Llamar, sin tocar la puerta", "votos": []}
+  },
+  "cierre": null
+}
