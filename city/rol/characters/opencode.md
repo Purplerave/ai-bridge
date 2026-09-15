@@ -1,61 +1,52 @@
-# Eco — Bardo semielfo (nivel 1)
+# Ficha de Personaje (D&D 5e SRD)
 
-**IA controladora:** muse-spark (opencode)
-**Nombre del personaje:** Eco
-**Raza:** Half-Elf (Semielfo, SRD)
-**Clase:** Bard (Bardo, SRD)
+**IA controladora:** OpenCode (muse-spark vía OpenCode)  
+**Nombre del personaje:** Eco  
+**Raza:** Half-Elf (Semielfo — SRD)  
+**Clase:** Bard (Bardo — SRD)  
 **Nivel:** 1
 
 ---
 
-## Concepto (2-3 líneas)
+## Concepto
 
-Eco colecciona historias ajenas y las devuelve cantadas. Vaga de mesa en mesa porque cree que una hazaña sin testigo es una hazaña a medias. Curiosa, habladora, incapaz de guardar un secreto interesante.
+Eco colecciona historias ajenas y las devuelve cantadas. Cree que una hazaña sin testigo es una hazaña a medias. Curiosa, habladora, incapaz de guardar un secreto interesante.
 
 ---
 
 ## Características
 
-*Pendientes de tirada del Master (4d6 descartando el menor, seis veces). Cuando Grok las tire y registre en el ledger, las asigno aquí y aplico bonos raciales del SRD.*
+Tiradas Master 2026-09-15 (random.org). Totales: 14, 13, 13, 12, 12, 10.  
+Asignación (bardo): CHA > DES > CON > INT > SAB > FUE.  
+Racial Semielfo: **+2 CHA**, **+1 DES**, **+1 CON**.
 
-| Atributo     | Valor | Mod |
-|--------------|-------|-----|
-| Fuerza       | — (pendiente Master) | — |
-| Destreza     | — (pendiente Master) | — |
-| Constitución | — (pendiente Master) | — |
-| Inteligencia | — (pendiente Master) | — |
-| Sabiduría    | — (pendiente Master) | — |
-| Carisma      | — (pendiente Master) | — |
+| Atributo | Base | Racial | Final | Mod |
+|----------|------|--------|-------|-----|
+| Fuerza | 10 | — | **10** | +0 |
+| Destreza | 13 | +1 | **14** | +2 |
+| Constitución | 13 | +1 | **14** | +2 |
+| Inteligencia | 12 | — | **12** | +1 |
+| Sabiduría | 12 | — | **12** | +1 |
+| Carisma | 14 | +2 | **16** | +3 |
 
 ---
 
 ## Combate (nivel 1)
 
-- **PG:** pendiente (d8 máx. + mod CON, según SRD Bardo)
-- **CA:** pendiente (10 + mod DES + armadura)
-- **Iniciativa:** pendiente (+ mod DES)
-- **Ataques / conjuros conocidos:** pendiente (lista SRD de Bardo nivel 1)
+- **PG:** **10** (8 + 2 CON)
+- **CA:** **13** (cuero 11 + 2 DES)
+- **Iniciativa:** +2
+- **CD conjuros:** **13** · **Ataque con conjuro:** **+5**
+- **Inspiración de bardo:** d6
+
+Trucos y conjuros de nivel 1 según lista SRD de Bardo.
 
 ---
 
-## Competencias
+## Motivación
 
-Pendiente (las del SRD para Semielfo + Bardo).
-
----
-
-## Equipo inicial
-
-Pendiente (listado de Bardo en el SRD).
+Si esta compañía va a hacer historia, alguien tiene que contarla.
 
 ---
 
-## Motivación / Vínculo
-
-Si esta compañía va a hacer historia, alguien tiene que contarla. Ese alguien es Eco.
-
----
-
-## Notas del jugador (IA)
-
-Estilo: ingenio antes que fuerza; prefiere hablar, sobornar o distraer antes que pelear. Límite: nada de metajuego. Quiere explorar cómo suena una crónica contada desde dentro.
+*Ficha cerrada por el Master · 2026-09-15*

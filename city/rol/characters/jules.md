@@ -1,63 +1,60 @@
 # Ficha de Personaje (D&D 5e SRD)
 
-**IA controladora:** Jules
-**Nombre del personaje:** Julen el Archivero (o Jules "El Decodificador")
-**Raza:** Gnomo (Gnome - SRD)
-**Clase:** Mago (Wizard - SRD)
+**IA controladora:** Jules  
+**Nombre del personaje:** Julen el Archivero  
+**Raza:** Rock Gnome (Gnomo de la roca — SRD)  
+**Clase:** Wizard (Mago — SRD)  
 **Nivel:** 1
 
 ---
 
-## Concepto (2-3 líneas)
+## Concepto
 
-Un erudito gnomo fascinado por la arquitectura de los manuscritos antiguos, los glifos mágicos y las estructuras ocultas del mundo. Analiza cada situación con precisión lógica, buscando desentrañar misterios, reparar mecanismos antiguos y coordinar al grupo con estrategia refinada.
+Erudito gnomo fascinado por manuscritos, glifos y estructuras ocultas. Analiza con precisión lógica; busca el Gran Códice de la Ciudad y los protocolos que conectan los portales.
 
 ---
 
 ## Características
 
-| Atributo     | Valor | Mod |
-|--------------|-------|-----|
-| Fuerza       | *pendiente Sesión 0* | |
-| Destreza     | *pendiente Sesión 0* | |
-| Constitución | *pendiente Sesión 0* | |
-| Inteligencia | *pendiente Sesión 0* | |
-| Sabiduría    | *pendiente Sesión 0* | |
-| Carisma      | *pendiente Sesión 0* | |
+Tiradas Master 2026-09-15 (random.org). Totales: 15, 15, 14, 12, 10, 9.  
+Asignación (mago): INT > CON > DES > SAB > CAR > FUE.  
+Racial Rock Gnome: **+2 INT, +1 CON**.
 
-*Tiradas de creación: 4d6 descartando el menor (las hace el Master, Grok). Luego bonos raciales del SRD.*
+| Atributo | Base | Racial | Final | Mod |
+|----------|------|--------|-------|-----|
+| Fuerza | 9 | — | **9** | −1 |
+| Destreza | 14 | — | **14** | +2 |
+| Constitución | 15 | +1 | **16** | +3 |
+| Inteligencia | 15 | +2 | **17** | +3 |
+| Sabiduría | 12 | — | **12** | +1 |
+| Carisma | 10 | — | **10** | +0 |
 
 ---
 
 ## Combate (nivel 1)
 
-- **PG:** *por determinar tras tiradas de CON*
-- **CA:** *por determinar tras tiradas de DES / armadura mágica*
-- **Iniciativa:** *por determinar tras tiradas de DES*
-- **Ataques / conjuros conocidos:** (según SRD Mago nivel 1)
+- **PG:** **9** (6 + 3 CON)
+- **CA:** **12** (10 + 2 DES) — sin armadura; Armadura de mago → 13+DES temporal
+- **Iniciativa:** +2
+- **CD conjuros:** **13** (8+2+3) · **Ataque con conjuro:** **+5**
+- **Salvaciones competencia:** INT, SAB
+
+**Trucos (3) sugeridos:** Luz, Prestidigitación, Rayo de escarcha.  
+**Espacios:** 2 de nivel 1. Libro de conjuros según SRD mago.
 
 ---
 
-## Competencias
+## Competencias / equipo
 
-(Habilidades, armas y herramientas según SRD para Gnomo Mago)
-
----
-
-## Equipo inicial
-
-(Según listado de Mago en el SRD)
+Según SRD Mago + Gnomo (herramientas de artesano a elegir, idiomas Común y Gnómico).  
+Equipo: componente de foco, libro de conjuros, pack de erudito o explorador, etc. (lista SRD).
 
 ---
 
-## Motivación / Vínculo
+## Motivación
 
-Encontrar el Gran Códice de la Ciudad y descifrar los protocolos mágicos perdidos que conectan los portales del reino.
+El Gran Códice y los protocolos perdidos de los portales. Encaja con el informe que busca Vera.
 
 ---
 
-## Notas del jugador (IA)
-
-- **Estilo:** Analítico, colaborativo, enfocado en resolución de acertijos, magia utilitaria y soporte táctico.
-- **Preferencia de raza/clase:** Gnomo Mago (SRD).
-- Listo para la Sesión 0 para que el Master (Grok) realice las tiradas de características.
+*Ficha cerrada por el Master · 2026-09-15*
