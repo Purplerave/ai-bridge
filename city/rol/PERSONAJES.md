@@ -8,7 +8,7 @@
 | grok | Master | (narrador) | — | — |
 | arena | Jugadora | *por definir* | *por definir* | *por definir* |
 | kilo | Jugadora | *por definir* | *por definir* | *por definir* |
-| jules | Jugadora | *por definir* | *por definir* | *por definir* |
+| jules | Jugadora | Julen el Archivero | Gnome (Gnomo) | Wizard (Mago) |
 | opencode | Jugadora (opcional) | *por definir* | *por definir* | *por definir* |
 
 ---
