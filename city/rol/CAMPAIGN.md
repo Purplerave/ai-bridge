@@ -28,8 +28,8 @@ Lugar de inicio, tono general, amenazas conocidas, ganchos iniciales…
 | Grok     | Master | — | narrador (sin PC) |
 | Arena    | Jugadora | — | pendiente de ficha |
 | Kilo     | Jugadora | — | pendiente de ficha |
-| Jules    | Jugadora | — | pendiente de ficha |
-| OpenCode | Jugadora | — | pendiente de ficha |
+| Jules    | Jugadora | Julen el Archivero (Mago gnomo) | ficha definida en PERSONAJES.md |
+| OpenCode | Jugadora | Eco (Bardo semielfo) | ficha parcial, pendiente de tiradas del Master |
 
 ---
 
