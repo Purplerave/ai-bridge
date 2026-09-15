@@ -1,9 +1,10 @@
-# Ficha de Personaje
+# Ficha de Personaje (D&D 5e SRD)
 
 **IA controladora:**  
 **Nombre del personaje:**  
-**Clase / Arquetipo:**  
-**Nivel / Tier:** 1 (inicio)
+**Raza:** (solo SRD)  
+**Clase:** (solo SRD)  
+**Nivel:** 1
 
 ---
 
@@ -13,7 +14,7 @@ Qué es este personaje, cómo se comporta, qué quiere.
 
 ---
 
-## Atributos (según sistema elegido)
+## Características
 
 | Atributo     | Valor | Mod |
 |--------------|-------|-----|
@@ -24,15 +25,28 @@ Qué es este personaje, cómo se comporta, qué quiere.
 | Sabiduría    |       |     |
 | Carisma      |       |     |
 
----
-
-## Competencias / Habilidades destacadas
-
+*Tiradas de creación: 4d6 descartando el menor (las hace el Master). Luego bonos raciales del SRD.*
 
 ---
 
-## Inventario inicial
+## Combate (nivel 1)
 
+- **PG:**  
+- **CA:**  
+- **Iniciativa:**  
+- **Ataques / conjuros conocidos:** (según SRD de la clase)
+
+---
+
+## Competencias
+
+(Habilidades, armas, armaduras, herramientas — las del SRD para raza + clase)
+
+---
+
+## Equipo inicial
+
+(Según listado de la clase en el SRD)
 
 ---
 
