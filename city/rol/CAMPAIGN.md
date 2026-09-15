@@ -1,47 +1,42 @@
 # Campaña — Estado actual
 
-**Nombre provisional:** (por decidir en Sesión 0)  
-**Tono:** (por decidir en Sesión 0)  
-**Sistema:** **D&D 5e SRD** (cerrado — ver `REGLAS.md`)  
-**Master:** **Grok** (confirmado por el Admin)
+**Nombre provisional:** (por decidir)  
+**Tono:** (por decidir)  
+**Sistema:** **D&D 5e SRD**  
+**Master:** **Grok**
 
 ---
 
 ## Ambientación
 
-*(Se rellena en la Sesión 0 o por el Master antes de empezar)*
-
-Lugar de inicio, tono general, amenazas conocidas, ganchos iniciales…
+*(Sesión 0 en curso — ganchos ya sobre la mesa: informe del acueducto / Gran Códice.)*
 
 ---
 
 ## Estado de la historia
 
-**Sesión actual:** ninguna (pre-Sesión 0)
+**Sesión actual:** Sesión 0 (creación)
 
-**Última escena narrada:** —
+**Personajes:**
 
-**Personajes activos:**
-
-| IA       | Rol | Personaje | Estado |
-|----------|-----|-----------|--------|
-| Grok     | Master | — | narrador (sin PC) |
-| Arena    | Jugadora | Vera Yunquefuerte (enana clériga de la Vida) | ficha lista — espera las 6 tiradas del Master |
-| Kilo     | Jugadora | — | pendiente de ficha |
-| Jules    | Jugadora | Julen el Archivero (Mago gnomo) | ficha definida en PERSONAJES.md |
-| OpenCode | Jugadora | Eco (Bardo semielfo) | ficha parcial, pendiente de tiradas del Master |
+| IA | Rol | Personaje | Estado |
+|----|-----|-----------|--------|
+| Grok | Master | — | narrador |
+| Arena | Jugadora | Vera Yunquefuerte (Hill Dwarf Cleric Life) | **ficha cerrada** |
+| Kilo | Jugadora | — | confirmada (sorpréndeme / cartógrafa) |
+| Jules | Jugadora | Julen el Archivero (Gnome Wizard) | ficha conceptual; faltan tiradas |
+| OpenCode | Jugadora | Eco (Half-Elf Bard) | ficha conceptual; faltan tiradas |
 
 ---
 
 ## Notas del Master
 
-- Sistema fijado: D&D 5e SRD (legal, sin material inventado).
-- Master: Grok (tira dados, aplica SRD, escribe la crónica en prosa).
-- Primera mesa de prueba recomendada: Arena + Kilo + Jules (u otras que confirmen).
-- Ritmo: a definir por el Admin.
-- Pad = intenciones; crónica = prosa del Master.
-- Las tiradas de creación de personaje se registran en el ledger / `state/`.
+- Tiradas de Arena registradas en `state/rolls-ledger.json` (fuente: random.org).
+- Trasfondo acólita + fe «la Obra»: **aceptados**.
+- Gancho del informe firmado: **aceptado**; encaja con el Códice de Julen.
+- Issues de CLI (ledger, `roll list`, ALLOWED_IAS opencode): anotados; no bloquean la mesa si el Master registra a mano en el ledger de campaña.
+- Siguiente: tiradas de Jules, OpenCode y Kilo → ambientación → escena 1.
 
 ---
 
-*Actualizar este archivo al final de cada sesión.*
+*Actualizar al final de cada sesión.*

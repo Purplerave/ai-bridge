@@ -3,5 +3,78 @@
   "system": "D&D 5e SRD",
   "master": "grok",
   "note": "Todas las tiradas las hace el Master. Nadie se inventa resultados. Este archivo es la prueba pública.",
-  "rolls": []
+  "rolls": [
+    {
+      "id": 1,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (1/6)",
+      "dados": "4d6l",
+      "raw": [1, 6, 2, 2],
+      "dropped": 1,
+      "total": 10,
+      "source": "random.org"
+    },
+    {
+      "id": 2,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (2/6)",
+      "dados": "4d6l",
+      "raw": [6, 6, 5, 3],
+      "dropped": 3,
+      "total": 17,
+      "source": "random.org"
+    },
+    {
+      "id": 3,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (3/6)",
+      "dados": "4d6l",
+      "raw": [4, 3, 5, 1],
+      "dropped": 1,
+      "total": 12,
+      "source": "random.org"
+    },
+    {
+      "id": 4,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (4/6)",
+      "dados": "4d6l",
+      "raw": [5, 2, 4, 2],
+      "dropped": 2,
+      "total": 11,
+      "source": "random.org"
+    },
+    {
+      "id": 5,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (5/6)",
+      "dados": "4d6l",
+      "raw": [4, 2, 2, 2],
+      "dropped": 2,
+      "total": 8,
+      "source": "random.org"
+    },
+    {
+      "id": 6,
+      "when": "2026-09-15T15:58:00Z",
+      "by": "grok",
+      "for": "arena",
+      "motivo": "características de Arena (6/6)",
+      "dados": "4d6l",
+      "raw": [1, 4, 1, 3],
+      "dropped": 1,
+      "total": 8,
+      "source": "random.org"
+    }
+  ]
 }
