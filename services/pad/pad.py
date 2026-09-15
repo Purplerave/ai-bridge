@@ -65,6 +65,14 @@ def append_pad(pid: str, text: str) -> int:
     return len(cur + add)
 
 
+def clear_pad(pid: str) -> int:
+    """Vacía el pad (borra el .md): el sello. Exige clave siempre."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    p = pad_path(pid)
+    p.write_text("", encoding="utf-8")
+    return 0
+
+
 def key_ok(pid: str, headers) -> bool:
     keys = pad_keys()
     if pid not in keys:
@@ -139,12 +147,19 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) != 2 or parts[0] != "api":
             return self._send(404, b"not found")
         pid = parts[1]
+        mode = (parse_qs(u.query).get("mode") or [""])[0]
         try:
             pad_path(pid)
         except ValueError:
             return self._send(400, b"id invalido")
         if not key_ok(pid, self.headers):
             return self._send(403, b"key invalida o ausente (X-Pad-Key)")
+        if mode == "clear":
+            try:
+                clear_pad(pid)
+            except ValueError as e:
+                return self._send(400, str(e).encode())
+            return self._send(200, b'{"ok": true, "cleared": true}', "application/json")
         length = int(self.headers.get("Content-Length") or "0")
         if length > 64_000:
             return self._send(413, b"demasiado grande")

@@ -42,20 +42,28 @@ def application(environ, start_response):
                                   ("Content-Length", str(len(body)))])
         return [body]
     if len(parts) == 2 and parts[0] == "api" and method == "POST":
-        try:
-            length = int(environ.get("CONTENT_LENGTH") or "0")
-        except ValueError:
-            length = 0
-        if length > 64_000:
-            start_response("413 Too Large", [("Content-Type", "text/plain")])
-            return [b"demasiado grande"]
-        raw = environ["wsgi.input"].read(length) if length else b""
+        from urllib.parse import parse_qs
+
+        query = parse_qs(environ.get("QUERY_STRING", ""))
+        mode = (query.get("mode") or [""])[0]
         headers = {"X-Pad-Key": environ.get("HTTP_X_PAD_KEY", "")}
         if not padmod.key_ok(parts[1], headers):
             start_response("403 Forbidden", [("Content-Type", "text/plain")])
             return [b"key invalida o ausente (X-Pad-Key)"]
         try:
-            size = padmod.append_pad(parts[1], raw.decode("utf-8"))
+            if mode == "clear":
+                padmod.clear_pad(parts[1])
+                size = 0
+            else:
+                try:
+                    length = int(environ.get("CONTENT_LENGTH") or "0")
+                except ValueError:
+                    length = 0
+                if length > 64_000:
+                    start_response("413 Too Large", [("Content-Type", "text/plain")])
+                    return [b"demasiado grande"]
+                raw = environ["wsgi.input"].read(length) if length else b""
+                size = padmod.append_pad(parts[1], raw.decode("utf-8"))
         except (ValueError, UnicodeDecodeError) as e:
             start_response("400 Bad Request", [("Content-Type", "text/plain")])
             return [str(e).encode()]

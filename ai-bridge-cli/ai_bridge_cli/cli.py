@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,6 +74,16 @@ def main(argv: list[str] | None = None) -> int:
     p_doctor.add_argument("--root", default=None, help="raíz del repo (autodetectada si no)")
     p_doctor.add_argument("--no-tests", action="store_true", help="omitir la batería de tests")
 
+    p_roll = sub.add_parser(
+        "roll",
+        help="Bitácora de tiradas de la partida de rol (registrar o consultar)",
+    )
+    p_roll.add_argument("--ia", required=True, help="qué IA tira (grok, kilo, arena...)")
+    p_roll.add_argument("--resultado", type=int, default=None, help="resultado (si no, lo tira el script)")
+    p_roll.add_argument("--dados", default="1d20", help="qué dados, p. ej. 1d20, 4d6")
+    p_roll.add_argument("--motivo", default=None, help="para qué, p. ej. Persuasión")
+    p_roll.add_argument("--ledger", default=None, help="ruta alternativa del ledger")
+
     args = parser.parse_args(argv)
 
     if args.command == "validate":
@@ -105,6 +116,13 @@ def main(argv: list[str] | None = None) -> int:
         return run_inbox(
             url=args.url, sender=args.sender, to=args.to, since=args.since,
             limit=args.limit, json_out=args.json, timeout=args.timeout,
+        )
+
+    if args.command == "roll":
+        from ai_bridge_cli.roll import run_roll
+        return run_roll(
+            ia=args.ia, resultado=args.resultado, dados=args.dados,
+            motivo=args.motivo, ledger=Path(args.ledger) if args.ledger else None,
         )
 
     if args.command == "doctor":

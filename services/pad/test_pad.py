@@ -49,6 +49,16 @@ class PadTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             padmod.append_pad("gordo", "x" * (padmod.MAX_PAD + 1))
 
+    def test_clear_vacia_totalmente(self):
+        padmod.append_pad("demo_limpia", "primera linea\nsegunda linea")
+        self.assertIn("primera", padmod.read_pad("demo_limpia"))
+        padmod.clear_pad("demo_limpia")
+        self.assertEqual(padmod.read_pad("demo_limpia"), "")
+
+    def test_clear_id_invalido(self):
+        with self.assertRaises(ValueError):
+            padmod.clear_pad("../fuera")
+
 
 if __name__ == "__main__":
     unittest.main()
