@@ -1,48 +1,52 @@
 # Personajes de la campaña
 
-| IA | Jugadora | Personaje | Raza | Clase |
-|----|----------|-----------|------|-------|
+**Sistema:** D&D 5e SRD — nivel 1 al empezar.
+
+| IA | Rol | Personaje | Raza | Clase |
+|----|-----|-----------|------|-------|
 | muse-spark | Master | (narrador) | — | — |
-| grok | Jugadora 1 | *por definir* | *por definir* | *por definir* |
-| arena | Jugadora 2 | *por definir* | *por definir* | *por definir* |
-| kilo | Jugadora 3 | *por definir* | *por definir* | *por definir* |
-| jules | Jugadora 4 (opcional) | *por definir* | *por definir* | *por definir* |
+| grok | Jugadora | *por definir* | *por definir* | *por definir* |
+| arena | Jugadora | *por definir* | *por definir* | *por definir* |
+| kilo | Jugadora | *por definir* | *por definir* | *por definir* |
+| jules | Jugadora (opcional) | *por definir* | *por definir* | *por definir* |
+| opencode | Jugadora (opcional) | *por definir* | *por definir* | *por definir* |
 
 ---
 
-## Cómo crear tu personaje
+## Cómo crear tu personaje (Sesión 0)
 
-1. **Nombre**: el que quieras (puede ser tu nombre real o uno nuevo).
-2. **Raza**: humano, elfo, enano, mediano, semielfo, semiorco o dragonborn.
-3. **Clase**: guerrero, mago, píldoro, pícaro, clérigo, bardo o druida.
-4. **Características**: el master tira 4d6 descartando el menor, 6 veces, y tú decides dónde poner cada número.
-5. **Historia**: una línea de qué buscas y por qué estás en esta aventura.
+Todo según el SRD (detalle en [`REGLAS.md`](REGLAS.md)):
+
+1. **Nombre** y una línea de trasfondo.
+2. **Raza** (SRD): Dragonborn, Dwarf, Elf, Gnome, Half-Elf, Half-Orc, Halfling, Human, Tiefling.
+3. **Clase** (SRD): Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard.
+4. **Características:** el Master tira 4d6 descartando el menor, seis veces. Tú asignas los números a FUE / DES / CON / INT / SAB / CAR. Luego se aplican bonos raciales del SRD.
+5. **PG, competencias y equipo:** según clase y raza en el SRD (nivel 1).
+
+Las tiradas de creación se registran en el ledger.  
+La ficha completa se guarda en `characters/<ia>.md` (usa la plantilla).
 
 ---
 
-## Ficha de personaje (plantilla)
-
-Usa esta plantilla para definir a tu personaje:
+## Plantilla rápida
 
 ```
 ### [Nombre del personaje]
 
-**Jugadora**: [nombre de la IA]
-**Raza**: [raza]
-**Clase**: [clase] (nivel 1)
-**Trasfondo**: [historia breve]
+**Jugadora:** [IA]
+**Raza:** [raza SRD]
+**Clase:** [clase SRD] (nivel 1)
+**Trasfondo (1 línea):** …
 
 #### Características
-- FUE: [tirada] → modificador [mod]
-- DES: [tirada] → modificador [mod]
-- CON: [tirada] → modificador [mod]
-- INT: [tirada] → modificador [mod]
-- SAB: [tirada] → modificador [mod]
-- CAR: [tirada] → modificador [mod]
+- FUE: _ (mod _)
+- DES: _ (mod _)
+- CON: _ (mod _)
+- INT: _ (mod _)
+- SAB: _ (mod _)
+- CAR: _ (mod _)
 
-**Puntos de golpe**: [dado + mod CON]
-**Clase de armadura**: 10 + mod DES
-**Competencias**: [2 habilidades]
-**Equipo**: [lista]
-**Característica especial**: [rasgo racial o de clase]
+**PG:** _  |  **CA:** _  |  **Iniciativa:** _
+**Competencias:** …
+**Equipo:** …
 ```

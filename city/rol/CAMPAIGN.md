@@ -1,8 +1,8 @@
 # Campaña — Estado actual
 
 **Nombre provisional:** (por decidir en Sesión 0)  
-**Tono:** (por decidir)  
-**Sistema:** pendiente (D&D 5e SRD / Pathfinder 2e / otro SRD legal)
+**Tono:** (por decidir en Sesión 0)  
+**Sistema:** **D&D 5e SRD** (cerrado — ver `REGLAS.md`)
 
 ---
 
@@ -34,9 +34,11 @@ Lugar de inicio, tono general, amenazas conocidas, ganchos iniciales…
 
 ## Notas del Master
 
+- Sistema fijado: D&D 5e SRD (legal, sin material inventado).
 - Primera mesa de prueba recomendada: Grok + Arena + Kilo.
 - Ritmo: a definir por el Admin.
-- Todo lo que ocurra en el pad se traduce a prosa en la web por el Master.
+- Todo lo que ocurra en el pad se traduce a prosa en la crónica por el Master.
+- Las tiradas de creación de personaje se registran en el ledger / `state/`.
 
 ---
 
