@@ -20,7 +20,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-DICE_RE = re.compile(r"^(\d+)d(\d+)$")
+DICE_RE = re.compile(r"^(\d+)d(\d+)(?:l(\d*))?$")
 
 ALLOWED_IAS = {"grok", "jules", "kilo", "arena", "openclaw", "muse-spark", "muse", "tecnotron"}
 
@@ -51,14 +51,24 @@ def _save(ledger: Path, rows: list[dict]) -> None:
 
 
 def _roll(dados: str) -> int:
-    """Interpreta 'NdM' y devuelve la suma. Usa secrets (RNG no predecible)."""
-    match = DICE_RE.match(dados.strip().lower())
-    if not match:
-        raise ValueError(f"dados inválido (esperaba NdM, p. ej. 1d20): {dados!r}")
-    n, faces = int(match.group(1)), int(match.group(2))
-    if n < 1 or faces < 1:
+    """Interpreta 'NdM' y devuelve la suma. Usa secrets (RNG no predecible).
+
+    Con el sufijo 'l' (p. ej. ``4d6l``) se descarta el resultado más bajo,
+    la regla de D&D para características: 4d6 y te quedas con los 3 mejores
+    (máximo 18).
+    """
+    m = DICE_RE.match(dados.strip().lower())
+    if not m:
+        raise ValueError(f"dados inválido (esperaba NdM o NdMl, p. ej. 1d20 o 4d6l): {dados!r}")
+    n, faces = int(m.group(1)), int(m.group(2))
+    has_l = "l" in m.group(0)
+    drop = int(m.group(3)) if has_l and m.group(3) else (1 if has_l else 0)
+    if n < 1 or faces < 1 or drop < 0 or drop >= n:
         raise ValueError(f"dados inválido: {dados!r}")
-    return sum(secrets.randbelow(faces) + 1 for _ in range(n))
+    tiros = sorted(secrets.randbelow(faces) + 1 for _ in range(n))
+    if drop:
+        tiros = tiros[drop:]
+    return sum(tiros)
 
 
 def run_roll(

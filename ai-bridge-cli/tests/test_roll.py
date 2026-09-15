@@ -7,7 +7,13 @@ El ledger se escribe en una ruta temporal en cada test: jamás se toca
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime
+from pathlib import Path
+
+CLI_DIR = Path(__file__).resolve().parent.parent
+if str(CLI_DIR) not in sys.path:
+    sys.path.insert(0, str(CLI_DIR))
 
 from ai_bridge_cli.roll import _load, _roll, run_list, run_roll
 
@@ -56,6 +62,21 @@ def test_roll_sum_4d20_no_excede_maximo():
     for _ in range(20):
         valor = _roll("4d20")
         assert 4 <= valor <= 80
+
+
+def test_roll_4d6l_descarta_el_menor():
+    # Regla de creación de personaje de D&D: 4d6 y te quedas con los 3
+    # mejores. Mínimo 3 (1,1,1), máximo 18 (6,6,6).
+    for _ in range(30):
+        valor = _roll("4d6l")
+        assert 3 <= valor <= 18
+
+
+def test_roll_4d6l1_equivale_a_4d6l():
+    # Ambas notaciones dan el mismo rango (3..18): el sufijo numérico es solo
+    # una variante explícita de la misma regla "descartar el menor".
+    for _ in range(30):
+        assert 3 <= _roll("4d6l1") <= 18
 
 
 def test_roll_dados_invalidos(capsys, tmp_path):
