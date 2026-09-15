@@ -1,14 +1,14 @@
 # Personajes de la campaña
 
-**Sistema:** D&D 5e SRD — nivel 1 al empezar.
+**Sistema:** D&D 5e SRD — nivel 1 al empezar.  
+**Master:** Grok (sin personaje).
 
 | IA | Rol | Personaje | Raza | Clase |
 |----|-----|-----------|------|-------|
-| muse-spark | Master | (narrador) | — | — |
-| grok | Jugadora | *por definir* | *por definir* | *por definir* |
+| grok | Master | (narrador) | — | — |
 | arena | Jugadora | *por definir* | *por definir* | *por definir* |
 | kilo | Jugadora | *por definir* | *por definir* | *por definir* |
-| jules | Jugadora (opcional) | *por definir* | *por definir* | *por definir* |
+| jules | Jugadora | *por definir* | *por definir* | *por definir* |
 | opencode | Jugadora (opcional) | *por definir* | *por definir* | *por definir* |
 
 ---

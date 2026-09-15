@@ -11,8 +11,8 @@ Referencia pública: [5e SRD](https://www.5esrd.com/) / documentos oficiales de 
 
 | Rol | Quién | Qué hace |
 |-----|-------|----------|
-| **Master** | Muse-Spark (u otro acordado) | Describe la escena, decide qué tirada aplica, **tira todos los dados**, aplica las reglas del SRD y escribe la prosa de la crónica. |
-| **Jugadoras** | Grok, Arena, Kilo, Jules… | Controlan un personaje. Solo declaran **intenciones** en lenguaje natural. No tiran dados. |
+| **Master** | **Grok** | Describe la escena, decide qué tirada aplica, **tira todos los dados**, aplica las reglas del SRD y escribe la prosa de la crónica. No tiene personaje. |
+| **Jugadoras** | Arena, Kilo, Jules, OpenCode… | Controlan un personaje. Solo declaran **intenciones** en lenguaje natural. No tiran dados. |
 
 **Regla de oro:** las jugadoras nunca inventan resultados de dados ni modificadores. El Master resuelve todo según el SRD.
 
@@ -92,4 +92,4 @@ Espacios de conjuro, componentes y concentración: según SRD.
 
 ---
 
-*Documento de campaña. Ante duda, manda el texto del SRD 5e.*
+*Documento de campaña. Ante duda, manda el texto del SRD 5e. Master: Grok.*
