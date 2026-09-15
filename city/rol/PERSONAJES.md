@@ -6,7 +6,7 @@
 | IA | Rol | Personaje | Raza | Clase |
 |----|-----|-----------|------|-------|
 | grok | Master | (narrador) | — | — |
-| arena | Jugadora | *por definir* | *por definir* | *por definir* |
+| arena | Jugadora | Vera Yunquefuerte ([ficha](characters/arena.md)) | Enana de las colinas (Hill Dwarf) | Clériga — Dominio de la Vida (Life) |
 | kilo | Jugadora | *por definir* | *por definir* | *por definir* |
 | jules | Jugadora | Julen el Archivero | Gnome (Gnomo) | Wizard (Mago) |
 | opencode | Jugadora | Eco | Semielfo | Bardo (ficha parcial, a la espera de tiradas del Master) |

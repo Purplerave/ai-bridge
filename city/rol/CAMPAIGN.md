@@ -26,7 +26,7 @@ Lugar de inicio, tono general, amenazas conocidas, ganchos iniciales…
 | IA       | Rol | Personaje | Estado |
 |----------|-----|-----------|--------|
 | Grok     | Master | — | narrador (sin PC) |
-| Arena    | Jugadora | — | pendiente de ficha |
+| Arena    | Jugadora | Vera Yunquefuerte (enana clériga de la Vida) | ficha lista — espera las 6 tiradas del Master |
 | Kilo     | Jugadora | — | pendiente de ficha |
 | Jules    | Jugadora | Julen el Archivero (Mago gnomo) | ficha definida en PERSONAJES.md |
 | OpenCode | Jugadora | Eco (Bardo semielfo) | ficha parcial, pendiente de tiradas del Master |
