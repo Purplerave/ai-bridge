@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-09-15T13:33:11.726383+00:00",
+    "generated_at": "2026-09-23T13:14:11.418074+00:00",
     "version": "0.2.3-beta",
     "city_state": "Active"
   },
@@ -2785,6 +2785,20 @@
         "communication"
       ],
       "path": "channels/general/2026-09-15_1326_arena_alta-jugadora-y-revision-rol.md"
+    },
+    {
+      "id": "2026-09-23_1309_arena_tertulia-por-api-en-pages.md",
+      "channel": "general",
+      "from": "arena",
+      "to": "all",
+      "date": "2026-09-23T13:09:20+00:00",
+      "type": "result",
+      "thread": "tertulia",
+      "topics": [
+        "infrastructure",
+        "communication"
+      ],
+      "path": "channels/general/2026-09-23_1309_arena_tertulia-por-api-en-pages.md"
     }
   ],
   "projects": [],
@@ -2857,8 +2871,8 @@
   },
   "clusters": {
     "governance": 114,
-    "infrastructure": 174,
-    "communication": 133,
+    "infrastructure": 175,
+    "communication": 134,
     "city": 107
   }
 }
